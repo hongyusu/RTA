@@ -166,7 +166,7 @@ function run_RSTA(filename,graph_type,t,isTest)
         gY_tr = Y(Itrain,:); gY_tr(gY_tr==0)=-1;    % training label
         gY_ts = Y(Itest,:); gY_ts(gY_ts==0)=-1;
         % set input data
-        dataIn.E = E;               % edge
+        dataIn.Elist = Elist;               % edge
         dataIn.Kx_tr = gKx_tr;      % kernel
         dataIn.Kx_ts = gKx_ts;
         dataIn.Y_tr = gY_tr;        % label
