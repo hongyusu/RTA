@@ -112,7 +112,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     %% generate random graph
     rand('twister', 0);
     % generate random graph (guess 200 base learner should be enough)
-    Nrep=200;
+    Nrep=1;
     Nnode=size(Y,2);
     Elist=cell(Nrep,1);
     for i=1:Nrep
@@ -197,17 +197,19 @@ function run_RSTA(filename,graph_type,t,isTest)
 end
 
 
+%% construct a rooted tree always from node 1
 function [E] = RootTree(E)
+    
     clist=[1];
     nclist=[];
-    workingE=[E,repmat(1,9,1)];
+    workingE=[E,ones(size(E,1),1)];
     newE=[];
     while size(clist)~=0
-        for i=1:size(E,1)
-            if workingE(i,3)==0
-                continue
-            end
-            for j=clist
+        for j=clist
+            for i=1:size(E,1)
+                if workingE(i,3)==0
+                    continue
+                end
                 if workingE(i,1)==j
                     nclist=[nclist,workingE(i,2)];
                     newE=[newE;[j,E(i,2)]];
@@ -218,7 +220,7 @@ function [E] = RootTree(E)
                     newE=[newE;[j,E(i,1)]];
                     workingE(i,3)=0;
                 end
-            end
+            end            
         end
         clist=nclist;
         nclist=[];
