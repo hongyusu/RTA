@@ -104,7 +104,7 @@ function run_RSTA(filename,graph_type,t,isTest)
         disp(err)
         mmcrf_c = 1;
         mmcrf_g = 0.9;
-        mmcrf_i = 3;
+        mmcrf_i = 10;
     end
     % display something
     disp([mmcrf_c,mmcrf_g,mmcrf_i])
@@ -112,7 +112,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     %% generate random graph
     rand('twister', 0);
     % generate random graph (guess 200 base learner should be enough)
-    Nrep=1;
+    Nrep=10;
     Nnode=size(Y,2);
     Elist=cell(Nrep,1);
     for i=1:Nrep
@@ -144,7 +144,7 @@ function run_RSTA(filename,graph_type,t,isTest)
         paramsIn.epsilon        = mmcrf_g;        % stopping criterion: minimum relative duality gap
         paramsIn.C              = mmcrf_c;        % margin slack
         paramsIn.max_CGD_iter   = 1;		% maximum number of conditional gradient iterations per example
-        paramsIn.max_LBP_iter   = 10;        % number of Loopy belief propagation iterations
+        paramsIn.max_LBP_iter   = 3;        % number of Loopy belief propagation iterations
         paramsIn.tolerance      = 1E-10;    % numbers smaller than this are treated as zero
         paramsIn.profile_tm_interval = 10;  % how often to test during learning
         paramsIn.maxiter        = mmcrf_i;        % maximum number of iterations in the outer loop
@@ -179,7 +179,7 @@ function run_RSTA(filename,graph_type,t,isTest)
         load(sprintf('/var/tmp/Ypred_%s.mat', paramsIn.filestem));
         
         Ypred(Itest,:)=Ypred_ts;
-        YpredVal(Itest,:)=Ypred_ts_val;
+        %YpredVal(Itest,:)=Ypred_ts_val;
         running_times(k,1) = running_time;
     end
 
