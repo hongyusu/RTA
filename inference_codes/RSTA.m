@@ -5,22 +5,15 @@
 function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     %% define global variables
     global loss_list;   % losses associated with different edge labelings
-    global loss;
     global mu_list;     % marginal dual varibles: these are the parameters to be learned
-    global mu;          % marginal dual varibles: these are the parameters to be learned
     global E_list;      % edges of the Markov network e_i = [E(i,1),E(i,2)];
-    global E;
     global ind_edge_val_list;	% ind_edge_val{u} = [Ye == u] 
-    global ind_edge_val;
     global Ye_list;             % Denotes the edge-labelings 1 <-- [-1,-1], 2 <-- [-1,+1], 3 <-- [+1,-1], 4 <-- [+1,+1]
-    global Ye;
-    
     global Kx_tr;   % X-kernel, assume to be positive semidefinite and normalized (Kx_tr(i,i) = 1)
     global Kx_ts;
     global Y_tr;    % Y-data: assumed to be class labels encoded {-1,+1}
     global Y_ts;
     global params;  % parameters use by the learning algorithm
-    
     global m;       % number of training instances
     global l;       % number of labels
     global Kmu;     % Kx_tr*mu
@@ -33,8 +26,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global Smu_list;
     global T_size;
     global cc;
-    global MBProp; % 2|E|x2|E| direction-specific adjacency matrix
-    global MBPropEdgeNode;
     global Kxx_mu_x_list;
     global Kxx_mu_x;
     
@@ -52,12 +43,13 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
-    cc = size(E,1)*T_size;
+    cc = 1/size(E_list{1},1)/T_size;
+    cc=1;
     mu_list = cell(T_size);
     for t=1:T_size
         [loss_list{t},Ye_list{t},ind_edge_val_list{t}] = compute_loss_vector(Y_tr,t,params.mlloss);
-        mu_list{t} = zeros(4*size(E,1),m);
-        Kxx_mu_x_list{t} = zeros(4*size(E,1),m);
+        mu_list{t} = zeros(4*size(E_list{1},1),m);
+        Kxx_mu_x_list{t} = zeros(4*size(E_list{1},1),m);
     end
 
 
@@ -68,7 +60,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
 
 
     %% optimization
-    print_message('Starting descent...',0);
+    print_message('Conditional gradient descend ...',0);
     primal_ub = Inf;
     opt_round = 0;
     profile_update_tr;
@@ -93,33 +85,60 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     %% iterate until converge
     params.verbosity = 2;
     iter=0;
+    
+    prev_n_err_microlbl=Inf;
+    prev_iter = iter;
+    prev_mu_list=mu_list;
+    prev_Kxx_mu_x_list=Kxx_mu_x_list;
+    prev_Rmu_list=Rmu_list;
+    prev_Smu_list=Smu_list;
 
-    params.maxiter = 10;
+    params.maxiter = 20;
     while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
             progress_made == 1 && ...   % make progress
             nflip > 0 && ...
             opt_round < params.maxiter ... % within iteration limitation
             )
         opt_round = opt_round + 1;
-        % iterate over examples            
-        kappa = 2;
+        
+        kappa = 6;
         obj=0;
-        iter = iter +1;
+        
+        
+        
+        %% iterate over examples 
+        iter = iter +1;           
         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
-            % conditional gradient optimization on index-x
             [obj,delta_obj] = optimize_x(xi,kappa,iter);
-            
-            %obj0 = mu(:)'*loss(:) - (mu(:)'*reshape(compute_Kmu(Kx_tr),4*size(E,1)*m,1))/2;
-            profile.iter = iter;
-          
         end
         profile_update_tr;
+         % update current best solution
+        if profile.n_err_microlbl < prev_n_err_microlbl
+            prev_n_err_microlbl=profile.n_err_microlbl;
+            prev_iter = iter;
+            prev_mu_list=mu_list;
+            prev_Kxx_mu_x_list=Kxx_mu_x_list;
+            prev_Rmu_list=Rmu_list;
+            prev_Smu_list=Smu_list;
+        end
+        
+        
     end
     
     
-    
-    
+    % last iteration
+    iter = prev_iter+1;
+    mu_list = prev_mu_list;
+    Kxx_mu_x_list = prev_Kxx_mu_x_list;
+    Rmu_list = prev_Rmu_list;
+    Smu_list = prev_Smu_list;
+    profile_update;
+    for xi=1:m
+        [obj,delta_obj] = optimize_x(xi,kappa,iter);
+        % TODO
+        %profile_update_tr;
+    end
     profile_update;
     
     
@@ -235,19 +254,13 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
     global Rmu_list;
     global Smu_list;
     global Kxx_mu_x_list;
-    
-
     global cc;
-    global m;
     global l;
     global Kx_tr;
     global T_size;
     global params;
-    global Y_tr;
     
-    obj_list = zeros(1,T_size);
-    delta_obj_list = zeros(1,T_size);
-    
+
     
     
     %% collect top-K prediction from each tree
@@ -263,8 +276,7 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
         E = E_list{t};
         % compute the quantity for tree t
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
-        % calculate gradient for current example
-        gradient =  loss - Kmu_x;
+        gradient =  cc*loss - Kmu_x;    % current gradient
         % terminate if gradient is too small
         % TODO
         if norm(gradient) < params.tolerance
@@ -276,16 +288,12 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
         Y_kappa_val(t,:) = YmaxVal;
     end
     
+    
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~] = find_worst_violator(Y_kappa,Y_kappa_val);
     
-    % for test  
-    if x==0 %
-        Y_kappa(:,1:20)
-        Ymax
-    end
-    
+
     
     
     %% line serach
@@ -304,15 +312,10 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
         ind_edge_val = ind_edge_val_list{t};
         mu = mu_list{t}(:,x);
         E = E_list{t};
-        if x==0 %
-            reshape(loss,4,size(E,1))
-            E'
-            [Ymax(E(:,1));Ymax(E(:,2))]
-            reshape(mu,4,size(E,1))
-        end
+
         %% compute
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
-        gradient =  loss - Kmu_x;
+        gradient =  cc*loss - Kmu_x;
         Gmax(t) = compute_Gmax(gradient,Ymax,t);            % objective under best labeling
         G0(t) = -mu'*gradient;                               % current objective
         %% best margin violator into update direction mu_0
@@ -340,19 +343,26 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
     end
     
     % decide whether to update or not
-    if sum(Gmax) >= sum(G0)
+    if sum(Gmax>=G0) == numel(G0)
         tau = min(sum(nomi)/sum(denomi),1);
+        tau = 2/(2+iter);
         tau_list = min(nomi./denomi,1);
     else
         tau=0;
         tau_list = nomi*0;
     end
     
+        
     if x==0 %
-        [Gmax;G0;nomi;denomi;nomi./denomi;tau_list]
+        [Gmax;G0;nomi;denomi;nomi./denomi;tau_list]'
     end
+    
+
+
    
     %% update for each tree
+	obj_list = zeros(1,T_size);
+    delta_obj_list = zeros(1,T_size);
     print_message(sprintf('Update for trees with Gmax %.2f G0 %.2f tao %.2f',Gmax,G0,tau),3)
     for t=1:T_size
         % variables located for tree t and example x
@@ -363,7 +373,7 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
         E = E_list{t};
         %tau=tau_list(t);
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
-        gradient =  loss - Kmu_x;
+        gradient =  cc*loss - Kmu_x;
         mu_d = mu_d_list{t};
         Kd_x = Kd_x_list{t};
         delta_obj_list(t) = gradient'*mu_d*tau - tau^2/2*mu_d'*Kd_x;
@@ -381,7 +391,7 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
-        obj_list(t) = mu'*loss + Kmu_x' * mu;
+        obj_list(t) = cc*mu'*loss + Kmu_x' * mu;
         
         
     end
@@ -516,7 +526,7 @@ function profile_update
         profile.next_profile_tm = profile.next_profile_tm + params.profile_tm_interval;
         profile.n_err_microlbl_prev = profile.n_err_microlbl;
 
-        [Ypred_tr,Ypred_tr_val] = compute_error(Y_tr,Kx_tr);
+        [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
         profile.microlabel_errors = sum(abs(Ypred_tr-Y_tr) >0,2);
         profile.n_err_microlbl = sum(profile.microlabel_errors);
         profile.p_err_microlbl = profile.n_err_microlbl/numel(Y_tr);
@@ -530,7 +540,8 @@ function profile_update
         profile.n_err_ts = sum(profile.microlabel_errors_ts > 0);
         profile.p_err_ts = profile.n_err_ts/length(profile.microlabel_errors_ts);
 
-        print_message(sprintf('td: %d err_tr: %d (%3.2f) ml.loss tr: %d (%3.2f) err_ts: %d (%3.2f) ml.loss ts: %d (%3.2f) obj: %d',...
+        print_message(...
+            sprintf('td: %d multi_err_tr: %d (%3.2f) err_tr: %d (%3.2f) multi_err_ts: %d (%3.2f) err_ts: %d (%3.2f) obj: %.2f',...
         round(tm-profile.start_time),profile.n_err,profile.p_err*100,profile.n_err_microlbl,profile.p_err_microlbl*100,round(profile.p_err_ts*size(Y_ts,1)),profile.p_err_ts*100,sum(profile.microlabel_errors_ts),sum(profile.microlabel_errors_ts)/numel(Y_ts)*100, obj),0,sprintf('/var/tmp/%s.log',params.filestem));
         %print_message(sprintf('%d here',profile.microlabel_errors_ts),4);
 
@@ -542,7 +553,6 @@ function profile_update
 end
 
 %% training profile
-%
 function profile_update_tr
     global params;
     global profile;
@@ -570,7 +580,7 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('td: %d multi_err: %d (%3.2f) micro_err: %d (%3.2f) obj: %.2f d_obj: %.2f',...
+            sprintf('td: %d multi_err_tr: %d (%3.2f) err_tr: %d (%3.2f) obj: %.2f d_obj: %.2f',...
             round(tm-profile.start_time),...
             profile.n_err,...
             profile.p_err*100,...
@@ -936,6 +946,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
+    %loss = loss*0+1;
     return
 end
 
@@ -974,10 +985,10 @@ end
 function print_message(msg,verbosity_level,filename)
     global params;
     if params.verbosity >= verbosity_level
-        fprintf('%s: %s\n',datestr(clock),msg);
+        fprintf('%s: %s\n',datestr(clock,13),msg);
         if nargin == 3
             fid = fopen(filename,'a');
-            fprintf(fid,'%s: %s\n',datestr(clock),msg);
+            fprintf(fid,'%s: %s\n',datestr(clock,13),msg);
             fclose(fid);
         end
     end
