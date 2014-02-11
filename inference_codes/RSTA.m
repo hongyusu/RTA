@@ -62,84 +62,83 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     print_message('Conditional gradient descend ...',0);
     primal_ub = Inf;
     opt_round = 0;
+    compute_duality_gap;
     profile_update_tr;
    
-    
-    %compute_duality_gap;
-    profile.n_err_microlbl_prev=profile.n_err_microlbl;
-    progress_made = 1;
-    
-    % trace the optimal solution
-%     prev_n_err_microlbl=profile.n_err_microlbl;
-%     prev_mu=mu;
-%     prev_obj=obj;
-%     prev_Kxx_mu_x=Kxx_mu_x;
-%     prev_Rmu=Rmu;
-%     prev_Smu=Smu;
-    
-    % allowed number of flips
-    nflip=5;
-    
-    
-    %% iterate until converge
-    params.verbosity = 2;
-    iter=0;
-    obj=0;
-    
-    prev_n_err_microlbl=Inf;
-    prev_iter = iter;
-    prev_mu_list=mu_list;
-    prev_Kxx_mu_x_list=Kxx_mu_x_list;
-    prev_Rmu_list=Rmu_list;
-    prev_Smu_list=Smu_list;
+
 
     params.maxiter = 20;
+       
+    
+    %% iterate until converge
+    % parameters
+    obj=0;
+    prev_obj = 0;
+    iter=0;
+    kappa = 6; 
+    nflip=Inf;
+    params.verbosity = 2;
+    progress_made = 1;
+    profile.n_err_microlbl_prev=profile.n_err_microlbl;
+
+    
+    best_n_err_microlbl=Inf;
+    best_iter = iter;
+    best_mu_list=mu_list;
+    best_Kxx_mu_x_list=Kxx_mu_x_list;
+    best_Rmu_list=Rmu_list;
+    best_Smu_list=Smu_list;
+    % loop through examples
     while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
-            progress_made == 1 && ...   % make progress
-            nflip > 0 && ...
-            opt_round < params.maxiter ... % within iteration limitation
+            progress_made == 1 && ...                   % make progress
+            nflip > 0 && ...                            % number of flips
+            opt_round < params.maxiter ...              % within iteration limitation
             )
         opt_round = opt_round + 1;
         
-        kappa = 6;
-        
-        
-        
-        
-        %% iterate over examples 
+        % iterate over examples 
         iter = iter +1;           
         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
-            [delta_obj] = optimize_x(xi,kappa,iter);
-            obj = obj + delta_obj;
+            [delta_obj] = optimize_x(xi,kappa,iter);    % optimize on single example
+            obj = obj + delta_obj;  % updated objective
         end
-        profile_update;
-         % update current best solution
-        if profile.n_err_microlbl < prev_n_err_microlbl
-            prev_n_err_microlbl=profile.n_err_microlbl;
-            prev_iter = iter;
-            prev_mu_list=mu_list;
-            prev_Kxx_mu_x_list=Kxx_mu_x_list;
-            prev_Rmu_list=Rmu_list;
-            prev_Smu_list=Smu_list;
+        progress_made = (obj >= prev_obj);  
+        prev_obj = obj;
+        compute_duality_gap;        % duality gap
+        profile_update_tr;          % profile update for training
+        % update flip number
+        if profile.n_err_microlbl > profile.n_err_microlbl_prev
+            nflip = nflip - 1;
         end
-        
-        
+        % update current best solution
+        if profile.n_err_microlbl < best_n_err_microlbl
+            best_n_err_microlbl=profile.n_err_microlbl;
+            best_iter = iter;
+            best_mu_list=mu_list;
+            best_Kxx_mu_x_list=Kxx_mu_x_list;
+            best_Rmu_list=Rmu_list;
+            best_Smu_list=Smu_list;
+        end
+
     end
     
     
+    
+    
+    
     % last iteration
-    iter = prev_iter+1;
-    mu_list = prev_mu_list;
-    Kxx_mu_x_list = prev_Kxx_mu_x_list;
-    Rmu_list = prev_Rmu_list;
-    Smu_list = prev_Smu_list;
-    profile_update;
+    iter = best_iter+1;
+    mu_list = best_mu_list;
+    Kxx_mu_x_list = best_Kxx_mu_x_list;
+    Rmu_list = best_Rmu_list;
+    Smu_list = best_Smu_list;
     for xi=1:m
         [delta_obj] = optimize_x(xi,kappa,iter);
         % TODO
         %profile_update_tr;
     end
+    
     profile_update;
     
     
@@ -230,9 +229,72 @@ function Kmu_x = compute_Kmu_x(x,Kx,t)
     end
     Kmu_x = reshape(term12(ones(4,1),:) + term34,4*size(E_list{t},1),1);
 end
- 
-%%  
+
+%% compute relative duality gap
 function compute_duality_gap
+
+    global T_size;
+    global Kx_tr;
+    global loss_list;
+    global E_list;
+    global Y_tr;
+    global params;
+    global mu_list;
+    global primal_ub;
+    global obj;
+    
+    m=size(Kx_tr,1);
+    Y=Y_tr;
+    kappa=3;
+    Ypred = zeros(size(Y));
+    YpredVal = zeros(size(Y,1),1);
+    Y_kappa = zeros(size(Y,1),size(Y,2)*kappa);
+    Y_kappa_val = zeros(size(Y,1),kappa);
+    
+    %% compute current best label over trees
+    % kappa best label
+    for t=1:T_size
+        loss = loss_list{t};
+        E = E_list{t};
+        loss = reshape(loss,4,size(E,1)*m);
+        Kmu = compute_Kmu(Kx_tr,t);
+        Kmu = reshape(Kmu,4,size(E,1)*m);
+        gradient = loss - Kmu;
+        [Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:),Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:)] = BestKDP(gradient,kappa);
+    end
+    % one single best label
+    for i=1:size(Y,1)
+        [Ypred(i,:),YpredVal(i,:)] = ...
+            find_worst_violator(Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
+    end
+    % for initialization we assign - label
+    if sum(sum(gradient))==0
+        Ypred = Ypred * (-1);
+    end
+    %% duality gaps over trees
+    dgap = zeros(1,T_size);
+    for t=1:T_size
+        loss = loss_list{t};
+        E = E_list{t};
+        mu = mu_list{t};
+        loss = reshape(loss,4,size(E,1)*m);
+        Kmu = compute_Kmu(Kx_tr,t);
+        Kmu = reshape(Kmu,4,size(E,1)*m);
+        gradient = loss - Kmu;
+        Gmax = compute_Gmax(gradient,Ypred,t);
+        mu = reshape(mu,4,m*size(E,1));
+        duality_gap = params.C*max(Gmax,0) - sum(reshape(sum(gradient.*mu),size(E,1),m),1)';
+        dgap(t) = sum(duality_gap);
+    end
+    %% primal upper bound
+    primal_ub = obj + mean(dgap(t));
+    
+    return
+end
+
+
+%%  
+function old_compute_duality_gap
     global E;
     global m;
     global params;
@@ -574,14 +636,12 @@ function profile_update
     global Kx_tr;
     global Y_ts;
     global Kx_ts;
-    global Y_pred;
-    global Y_predVal;
     global mu;
     global obj;
     global primal_ub;
     m = size(Ye,2);
     tm = cputime;
-    print_message(sprintf('alg: M3LBP tm: %d  iter: %d obj: %f mu: max %f min %f dgap: %f',...
+    print_message(sprintf('tm: %d  iter: %d obj: %f mu: max %f min %f dgap: %f',...
     round(tm-profile.start_time),profile.iter,obj,max(max(mu)),min(min(mu)),primal_ub-obj),5,sprintf('/var/tmp/%s.log',params.filestem));
     if params.profiling
         profile.next_profile_tm = profile.next_profile_tm + params.profile_tm_interval;
@@ -602,8 +662,8 @@ function profile_update
         profile.p_err_ts = profile.n_err_ts/length(profile.microlabel_errors_ts);
 
         print_message(...
-            sprintf('td: %d mu_er_tr: %d (%3.2f) er_tr: %d (%3.2f) mu_er_ts: %d (%3.2f) er_ts: %d (%3.2f) obj: %.2f',...
-        round(tm-profile.start_time),profile.n_err,profile.p_err*100,profile.n_err_microlbl,profile.p_err_microlbl*100,round(profile.p_err_ts*size(Y_ts,1)),profile.p_err_ts*100,sum(profile.microlabel_errors_ts),sum(profile.microlabel_errors_ts)/numel(Y_ts)*100, obj),0,sprintf('/var/tmp/%s.log',params.filestem));
+            sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) 1_er_ts: %d (%3.2f) er_ts: %d (%3.2f)',...
+        round(tm-profile.start_time),profile.n_err,profile.p_err*100,profile.n_err_microlbl,profile.p_err_microlbl*100,round(profile.p_err_ts*size(Y_ts,1)),profile.p_err_ts*100,sum(profile.microlabel_errors_ts),sum(profile.microlabel_errors_ts)/numel(Y_ts)*100),0,sprintf('/var/tmp/%s.log',params.filestem));
         %print_message(sprintf('%d here',profile.microlabel_errors_ts),4);
 
         running_time = tm-profile.start_time;
@@ -622,10 +682,12 @@ function profile_update_tr
     global obj;
     global primal_ub;
     global mu;
+
     
     tm = cputime;
     
-    print_message(sprintf('alg: M3LBP tm: %d  iter: %d obj: %f mu: max %f min %f dgap: %f',...
+    print_message(...
+        sprintf('tm: %d iter: %d obj: %.2f mu: max %.2f min %.2f dgap: %.2f',...
     round(tm-profile.start_time),profile.iter,obj,max(max(mu)),min(min(mu)),primal_ub-obj),...
     5,sprintf('/var/tmp/%s.log',params.filestem));
 
@@ -640,13 +702,14 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('td: %d mu_er_tr: %d (%3.2f) er_tr: %d (%3.2f) obj: %.2f',...
+            sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) obj: %.2f gap: %.2f',...
             round(tm-profile.start_time),...
             profile.n_err,...
             profile.p_err*100,...
             profile.n_err_microlbl,...
             profile.p_err_microlbl*100,...
-            obj),...
+            obj,...
+            primal_ub-obj),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
     end
 end
