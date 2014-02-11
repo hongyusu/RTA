@@ -20,7 +20,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global primal_ub;
     global profile;
     global obj;
-    global delta_obj;
     global opt_round;
     global Rmu_list;
     global Smu_list;
@@ -85,6 +84,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     %% iterate until converge
     params.verbosity = 2;
     iter=0;
+    obj=0;
     
     prev_n_err_microlbl=Inf;
     prev_iter = iter;
@@ -102,7 +102,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         opt_round = opt_round + 1;
         
         kappa = 6;
-        obj=0;
+        
         
         
         
@@ -110,9 +110,10 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         iter = iter +1;           
         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
-            [obj,delta_obj] = optimize_x(xi,kappa,iter);
+            [delta_obj] = optimize_x(xi,kappa,iter);
+            obj = obj + delta_obj;
         end
-        profile_update_tr;
+        profile_update;
          % update current best solution
         if profile.n_err_microlbl < prev_n_err_microlbl
             prev_n_err_microlbl=profile.n_err_microlbl;
@@ -135,7 +136,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Smu_list = prev_Smu_list;
     profile_update;
     for xi=1:m
-        [obj,delta_obj] = optimize_x(xi,kappa,iter);
+        [delta_obj] = optimize_x(xi,kappa,iter);
         % TODO
         %profile_update_tr;
     end
@@ -145,6 +146,49 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
 
     rtn = 0;
     ts_err = 0;
+end
+
+
+
+% Complete gradient
+function Kmu = compute_Kmu(Kx,t)
+    global mu_list;
+    global E_list;
+    global ind_edge_val_list;
+    mu = mu_list{t};
+    ind_edge_val = ind_edge_val_list{t};
+    E = E_list{t}; 
+    
+
+   
+    m_oup = size(Kx,2);
+    m = size(Kx,1);
+    if  0 %and(params.debugging, nargin == 2)
+        for x = 1:m
+           Kmu(:,x) = compute_Kmu_x(x,Kx(:,x));
+        end
+        Kmu = reshape(Kmu,4,size(E,1)*m);
+    else
+        mu_siz = size(mu);
+        mu = reshape(mu,4,size(E,1)*m);
+        Smu = reshape(sum(mu),size(E,1),m);
+        term12 =zeros(1,size(E,1)*m_oup);
+        Kmu = zeros(4,size(E,1)*m_oup);
+        for u = 1:4
+            IndEVu = full(ind_edge_val{u});    
+            Rmu_u = reshape(mu(u,:),size(E,1),m);
+            H_u = Smu.*IndEVu;
+            H_u = H_u - Rmu_u;
+            Q_u = H_u*Kx;
+            term12 = term12 + reshape(Q_u.*IndEVu,1,m_oup*size(E,1));
+            Kmu(u,:) = reshape(-Q_u,1,m_oup*size(E,1));
+        end
+        for u = 1:4
+            Kmu(u,:) = Kmu(u,:) + term12;
+        end
+    end
+    %mu = reshape(mu,mu_siz);
+    return
 end
 
 
@@ -240,7 +284,7 @@ end
 %   x   --> the id of current training example
 %   obj --> current objective
 %   kappa --> current kappa
-function [obj,delta_obj] = optimize_x(x, kappa, iter)
+function [delta_obj] = optimize_x(x, kappa, iter)
     global loss_list;
     global loss;
     global Ye_list;
@@ -304,7 +348,7 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
     kxx_mu_0 = cell(1,T_size);
     Gmax = zeros(1,T_size);
     G0 = zeros(1,T_size);
-    Kd_x_list = cell(1,T_size);
+    Kmu_d_list = cell(1,T_size);
     for t=1:T_size
         % variables located for tree t and example x
         loss = loss_list{t}(:,x);
@@ -332,14 +376,19 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
         else
             kxx_mu_0{t} = zeros(size(mu));
         end
+        
+        
         Kmu_0 = Kmu_x + kxx_mu_0{t} - Kxx_mu_x_list{t}(:,x);
 
         mu_d = mu_0 - mu;
-        Kd_x = Kmu_0-Kmu_x;
-        Kd_x_list{t} = Kd_x;
+        Kmu_d = Kmu_0-Kmu_x;
+        
+        
+        Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
-        denomi(t) = Kd_x' * mu_d;
+        denomi(t) = Kmu_d' * mu_d;
+        
     end
     
     % decide whether to update or not
@@ -359,10 +408,10 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
     
 
 
-   
     %% update for each tree
 	obj_list = zeros(1,T_size);
     delta_obj_list = zeros(1,T_size);
+    %cur_obj_list = zeros(1,T_size);
     print_message(sprintf('Update for trees with Gmax %.2f G0 %.2f tao %.2f',Gmax,G0,tau),3)
     for t=1:T_size
         % variables located for tree t and example x
@@ -371,35 +420,47 @@ function [obj,delta_obj] = optimize_x(x, kappa, iter)
         ind_edge_val = ind_edge_val_list{t};
         mu = mu_list{t}(:,x);
         E = E_list{t};
-        %tau=tau_list(t);
+        
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
+        
+        
         gradient =  cc*loss - Kmu_x;
         mu_d = mu_d_list{t};
-        Kd_x = Kd_x_list{t};
-        delta_obj_list(t) = gradient'*mu_d*tau - tau^2/2*mu_d'*Kd_x;
+        Kmu_d = Kmu_d_list{t};
+        delta_obj_list(t) = gradient'*mu_d*tau - tau^2/2*mu_d'*Kmu_d;
+        
+        
         mu = mu + tau*mu_d;
-        if x==0 %
-            reshape(mu,4,size(E,1))
-        end
         Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
         % update Smu Rmu
         mu = reshape(mu,4,size(E,1));
+
+        
         for u = 1:4
             Smu_list{t}{u}(:,x) = (sum(mu)').*ind_edge_val{u}(:,x);
             Rmu_list{t}{u}(:,x) = mu(u,:)';
         end
+        
+        
+        
+        
+
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
-        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
-        obj_list(t) = cc*mu'*loss + Kmu_x' * mu;
+        
+        
+
+        
+        %obj_list(t) = mu_list{t}(:)'*loss_list{t}(:) - (mu_list{t}(:)'*reshape(compute_Kmu(Kx_tr,t),4*size(E,1)*size(Kx_tr,1),1))/2
+        %[cur_obj_list(t),delta_obj_list(t),obj_list(t)]
         
         
     end
-    if x==0 %
-        [obj_list;delta_obj_list]
-    end
-    obj =  sum(obj_list);
+    
+    
     delta_obj =  sum(delta_obj_list);
+
+    return
 end
 
 %%
@@ -541,7 +602,7 @@ function profile_update
         profile.p_err_ts = profile.n_err_ts/length(profile.microlabel_errors_ts);
 
         print_message(...
-            sprintf('td: %d multi_err_tr: %d (%3.2f) err_tr: %d (%3.2f) multi_err_ts: %d (%3.2f) err_ts: %d (%3.2f) obj: %.2f',...
+            sprintf('td: %d mu_er_tr: %d (%3.2f) er_tr: %d (%3.2f) mu_er_ts: %d (%3.2f) er_ts: %d (%3.2f) obj: %.2f',...
         round(tm-profile.start_time),profile.n_err,profile.p_err*100,profile.n_err_microlbl,profile.p_err_microlbl*100,round(profile.p_err_ts*size(Y_ts,1)),profile.p_err_ts*100,sum(profile.microlabel_errors_ts),sum(profile.microlabel_errors_ts)/numel(Y_ts)*100, obj),0,sprintf('/var/tmp/%s.log',params.filestem));
         %print_message(sprintf('%d here',profile.microlabel_errors_ts),4);
 
@@ -559,7 +620,6 @@ function profile_update_tr
     global Y_tr;
     global Kx_tr;
     global obj;
-    global delta_obj;
     global primal_ub;
     global mu;
     
@@ -580,14 +640,13 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('td: %d multi_err_tr: %d (%3.2f) err_tr: %d (%3.2f) obj: %.2f d_obj: %.2f',...
+            sprintf('td: %d mu_er_tr: %d (%3.2f) er_tr: %d (%3.2f) obj: %.2f',...
             round(tm-profile.start_time),...
             profile.n_err,...
             profile.p_err*100,...
             profile.n_err_microlbl,...
             profile.p_err_microlbl*100,...
-            obj,...
-            delta_obj),...
+            obj),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
     end
 end
