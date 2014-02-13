@@ -103,8 +103,9 @@ function run_RSTA(filename,graph_type,t,isTest)
     catch err
         disp(err)
         mmcrf_c = 1;
-        mmcrf_g = 0.1;
+        mmcrf_g = 0.01;
         mmcrf_i = 10;
+        mmcrf_ssc = 4;
     end
     % display something
     disp([mmcrf_c,mmcrf_g,mmcrf_i])
@@ -148,6 +149,7 @@ function run_RSTA(filename,graph_type,t,isTest)
         paramsIn.tolerance      = 1E-10;    % numbers smaller than this are treated as zero
         paramsIn.profile_tm_interval = 10;  % how often to test during learning
         paramsIn.maxiter        = mmcrf_i;        % maximum number of iterations in the outer loop
+        paramsIn.ssc            = mmcrf_ssc;
         paramsIn.verbosity      = 1;
         paramsIn.debugging      = 3;
         if isTest

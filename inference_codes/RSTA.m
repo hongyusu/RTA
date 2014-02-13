@@ -27,8 +27,12 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global cc;
     global Kxx_mu_x_list;
     global Kxx_mu_x;
+    global kappa;
+    
+    
     
     %% initialize some of the global variables
+    kappa=3;
     params=paramsIn;
     Kx_tr=dataIn.Kx_tr;
     Kx_ts=dataIn.Kx_ts;
@@ -43,7 +47,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
     cc = 1/size(E_list{1},1)/T_size;
-    cc=1;
+    %cc=1;
     mu_list = cell(T_size);
     for t=1:T_size
         [loss_list{t},Ye_list{t},ind_edge_val_list{t}] = compute_loss_vector(Y_tr,t,params.mlloss);
@@ -67,15 +71,14 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
    
 
 
-    params.maxiter = 20;
+    params.maxiter = 25;
        
     
     %% iterate until converge
     % parameters
     obj=0;
     prev_obj = 0;
-    iter=0;
-    kappa = 6; 
+    iter=0; 
     nflip=Inf;
     params.verbosity = 2;
     progress_made = 1;
@@ -97,13 +100,19 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         opt_round = opt_round + 1;
         
         % iterate over examples 
-        iter = iter +1;           
+        iter = iter +1;   
+        kappa_decrease_flags = zeros(1,m);
         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
-            [delta_obj] = optimize_x(xi,kappa,iter);    % optimize on single example
+            [delta_obj,kappa_decrease_flags(xi)] = optimize_x(xi,kappa,iter);    % optimize on single example
             obj = obj + delta_obj;  % updated objective
         end
-        progress_made = (obj >= prev_obj);  
+%         if sum(kappa_decrease_flags)<m
+%             kappa = kappa*2;
+%         else
+%             kappa = max(ceil(kappa/2),1);
+%         end
+        %progress_made = (obj >= prev_obj);  
         prev_obj = obj;
         compute_duality_gap;        % duality gap
         profile_update_tr;          % profile update for training
@@ -242,10 +251,10 @@ function compute_duality_gap
     global mu_list;
     global primal_ub;
     global obj;
+    global kappa;
     
     m=size(Kx_tr,1);
     Y=Y_tr;
-    kappa=3;
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1),size(Y,2)*kappa);
@@ -264,7 +273,7 @@ function compute_duality_gap
     end
     % one single best label
     for i=1:size(Y,1)
-        [Ypred(i,:),YpredVal(i,:)] = ...
+        [Ypred(i,:),YpredVal(i,:),~] = ...
             find_worst_violator(Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
     end
     % for initialization we assign - label
@@ -293,60 +302,13 @@ function compute_duality_gap
 end
 
 
-%%  
-function old_compute_duality_gap
-    global E;
-    global m;
-    global params;
-    global mu;
-    global Kmu;
-    global loss;
-    global obj;
-    global primal_ub;
-    global duality_gap;
-    global opt_round;
-    l_siz = size(loss);
-    loss = reshape(loss,4,size(E,1)*m);
-    kmu_siz = size(Kmu);
-    Kmu = reshape(Kmu,4,size(E,1)*m);
-    gradient = loss - Kmu;
-    mu_siz = size(mu);
-    mu = reshape(mu,4,size(E,1)*m); gradient = reshape(gradient,4,size(E,1)*m);
-    dgap = Inf; LBP_iter = 1;Gmax = -Inf;
-    while LBP_iter <= size(E,1)
-        LBP_iter = LBP_iter*2; % no of iterations = diameter of the graph
-        if 1==1
-            [~,~,G] = BestKDP(gradient); 
-        else
-            %[~,~,G] = max_gradient_labeling(gradient,LBP_iter); 
-        end
-        Gmax = max(Gmax,G);
-
-        duality_gap = params.C*max(Gmax,0) - sum(reshape(sum(gradient.*mu),size(E,1),m),1)';
-        dgap = sum(duality_gap);
-
-        if obj+dgap < primal_ub+1E-6
-            break;
-        end
-    end
-    %primal_ub = min(obj+dgap,primal_ub);
-    if primal_ub == Inf
-         primal_ub = obj+dgap;
-    else
-         primal_ub = (obj+dgap)/min(opt_round,10)+primal_ub*(1-1/min(opt_round,10)); % averaging over a few last rounds
-    end
-    loss= reshape(loss,l_siz);
-    Kmu = reshape(Kmu,kmu_siz);
-    mu = reshape(mu,mu_siz);
-end
-
 
 %% conditional gradient optimization, conditional on example x
 % input: 
 %   x   --> the id of current training example
 %   obj --> current objective
 %   kappa --> current kappa
-function [delta_obj] = optimize_x(x, kappa, iter)
+function [delta_obj,kappa_decrease_flag] = optimize_x(x, kappa, iter)
     global loss_list;
     global loss;
     global Ye_list;
@@ -367,7 +329,6 @@ function [delta_obj] = optimize_x(x, kappa, iter)
     global params;
     
 
-    
     
     %% collect top-K prediction from each tree
     print_message(sprintf('Collect top-k prediction from each tree T-size %d', T_size),3)
@@ -397,7 +358,7 @@ function [delta_obj] = optimize_x(x, kappa, iter)
     
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
-    [Ymax, ~] = find_worst_violator(Y_kappa,Y_kappa_val);
+    [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
     
 
     
@@ -454,9 +415,10 @@ function [delta_obj] = optimize_x(x, kappa, iter)
     end
     
     % decide whether to update or not
-    if sum(Gmax>=G0) == numel(G0)
+    %if sum(Gmax>=G0) == numel(G0)
+    if sum(Gmax)>=sum(G0)
         tau = min(sum(nomi)/sum(denomi),1);
-        tau = 2/(2+iter);
+        tau = params.ssc/(params.ssc+iter);
         tau_list = min(nomi./denomi,1);
     else
         tau=0;
@@ -471,7 +433,7 @@ function [delta_obj] = optimize_x(x, kappa, iter)
 
 
     %% update for each tree
-	obj_list = zeros(1,T_size);
+	%obj_list = zeros(1,T_size);
     delta_obj_list = zeros(1,T_size);
     %cur_obj_list = zeros(1,T_size);
     print_message(sprintf('Update for trees with Gmax %.2f G0 %.2f tao %.2f',Gmax,G0,tau),3)
@@ -583,7 +545,7 @@ end
 %% get the worst margin violator from T*kappa violators
 % Input: Y_kappa, Y_kappa_val
 % Output:
-function [Ymax, YmaxVal] = find_worst_violator(Y_kappa,Y_kappa_val)
+function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
     % global variable
     global l;
     % local variable
@@ -595,7 +557,14 @@ function [Ymax, YmaxVal] = find_worst_violator(Y_kappa,Y_kappa_val)
             Y_kappa_ind(i,j) = bi2de(Y_kappa(i,((j-1)*l+1):(j*l)));
         end
     end
+    if sum(Y_kappa_ind(:,1)==Y_kappa_ind(:,2))>0
+        Y_kappa_ind
+        Y_kappa_val
+        %reshape(Y_kappa,numel(Y_kappa)/10,10)
+        
+    end
     %
+    break_flag=0;
     for i=1:size(Y_kappa_val,2)
         t_line = sum(Y_kappa_val(:,i));
         current_matrix_val = Y_kappa_val(:,1:i);
@@ -603,23 +572,34 @@ function [Ymax, YmaxVal] = find_worst_violator(Y_kappa,Y_kappa_val)
         unique_elements = unique(current_matrix_ind);
         element_id=0;
         element_val=-1;
+        element_id_mean=0;
+        element_val_mean=0;
         for j=1:size(unique_elements,1)
             current_val = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
             if current_val > element_val
                 element_val = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
                 element_id = unique_elements(j);                
             end
+            current_val_mean = mean(current_matrix_val(current_matrix_ind==unique_elements(j)));
+            if current_val_mean > element_val_mean
+                element_val_mean = mean(current_matrix_val(current_matrix_ind==unique_elements(j)));
+                element_id_mean = unique_elements(j);                
+            end
         end
         if element_val >= t_line
+            break_flag=1;
             break
         end
+    end
+    if break_flag==0
+        element_id = element_id_mean;
     end
     ind = find(Y_kappa_ind==element_id);
     ind = ind(1);
     i = ceil(mod(ind-1e-5, size(Y_kappa,1)));
     j = ceil((ind-1e-5) / size(Y_kappa,1));
     Ymax = Y_kappa(i,((j-1)*l+1):(j*l))*2-1;
-    %YmaxInd = Y_kappa_ind(i,j);
+    YmaxInd = Y_kappa_ind(i,j);
     YmaxVal = Y_kappa_val(i,j);
     return
 end
@@ -702,14 +682,14 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) obj: %.2f gap: %.2f',...
+            sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) obj: %.2f gap: %.2f %%',...
             round(tm-profile.start_time),...
             profile.n_err,...
             profile.p_err*100,...
             profile.n_err_microlbl,...
             profile.p_err_microlbl*100,...
             obj,...
-            primal_ub-obj),...
+            (primal_ub-obj)/obj*100),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
     end
 end
@@ -720,8 +700,8 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     global T_size;
     global E_list;
     global E;
+    global kappa;
     % local variable
-    kappa=3;
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1),size(Y,2)*kappa);
@@ -735,7 +715,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     end
 
     for i=1:size(Y,1)
-        [Ypred(i,:),YpredVal(i,:)] = ...
+        [Ypred(i,:),YpredVal(i,:),~] = ...
             find_worst_violator(Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
     end
     % for initialization we assign - label
@@ -928,7 +908,6 @@ function [Ymax,YmaxVal,Gmax] = BestKDP(gradient,K)
 
         %% trace back
         node_degree(E(1,1)) = node_degree(E(1,1))+1;
-
         % root node
         for k=1:K
             if k==0
@@ -953,31 +932,27 @@ function [Ymax,YmaxVal,Gmax] = BestKDP(gradient,K)
 
             % now everthing is standardized, then we do loop
             p=0;
+            
             for i=1:size(E,1)
                 if p == E(i,1)
                     continue
                 end
                 p = E(i,1);
                 c = E(i,2);
-                %[i,p,c]
                 % get block of the score matrix
                 row_block_par_ind = ((p-1)*K+1):p*K;
                 % get current optimal score position
-                if m==1
-                %[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node]
-                %[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),Q_node]
-                end
+                Q_node(row_block_par_ind,1:2);
                 index = find(Q_node(row_block_par_ind,1:2)~=0);
                 col_pos = ceil((index-1e-5)/K);
                 row_pos = ceil(mod(index-1e-5,K));
-                
-                %[index,col_pos,row_pos]
                 % emit a label
                 T_par_block = T_node(row_block_par_ind,1:2);
-                Y(p) = ceil((T_par_block(row_pos, col_pos)-1e-5)/K);
+                %Y(p) = ceil((T_par_block(row_pos, col_pos)-1e-5)/K);
+                Y(p) = col_pos;
                 % number of children
                 n_chi = node_degree(p)-1;
-                %disp(sprintf('%d->%d, n_chi %d, index %d -->(%d,%d)', p,c,n_chi,index,row_pos,col_pos))
+                %disp(sprintf('on %d, %d->%d, n_chi %d, index %d -->(%d,%d) emit %d',p,p,c,n_chi,index,row_pos,col_pos, Y(p)))
                 % children in order
                 cs = zeros(n_chi,1);
                 j=0;
@@ -992,8 +967,8 @@ function [Ymax,YmaxVal,Gmax] = BestKDP(gradient,K)
                 % loop through children
                 for j=size(cs,1):-1:1
                     c = cs(j);
-                    %disp(sprintf('%d->%d',p,c))
                     c_pos = (n_chi-j+2);
+                    %disp(sprintf('  %d->%d, child-col %d',p,c,c_pos))
                     col_block_c_ind = ((c_pos-1)*2+1):c_pos*2;
                     block = T_node(row_block_par_ind,col_block_c_ind);
                     index = block(row_pos,col_pos) + (col_pos-1)*K;
@@ -1004,20 +979,32 @@ function [Ymax,YmaxVal,Gmax] = BestKDP(gradient,K)
                     c_index = T_chi_block(c_row_pos,c_col_pos);
                     cc_col_pos = ceil((c_index-1e-5)/K);
                     cc_row_pos = ceil(mod(c_index-1e-5,K));
-                    %disp(sprintf('chi index %d -->(%d,%d) %d -->(%d,%d)',index,c_row_pos,c_col_pos,c_index,cc_row_pos,cc_col_pos))
                     zero_mask(cc_row_pos,cc_col_pos) = 1;
+                    %zero_mask(c_row_pos,c_col_pos) = 1;
                     Q_node(row_block_c_ind,1:2) = Q_node(row_block_c_ind,1:2) .* zero_mask;
+                    %zero_mask(c_row_pos,c_col_pos) = 0;
                     zero_mask(cc_row_pos,cc_col_pos) = 0;
+                    
                     % leave node: emit directly
                     if node_degree(c) == 1
                         Y(c) = cc_col_pos;
                     end
+                    
+                    %disp(sprintf(' chi %d index %d:%d -->(%d,%d) %d -->(%d,%d) emit %d',...
+                    %    c, block(row_pos,col_pos),index,c_row_pos,c_col_pos,c_index,cc_row_pos,cc_col_pos,Y(c)))
                 end
             end
             Ymax(training_i,(k-1)*nlabel+1:k*nlabel) = Y'*2-3;
+            
         end
+        
+
+        
         node_degree(E(1,1)) = node_degree(E(1,1))-1;
     end
+    
+ 
+        
     %%
     if nargout > 2
         % find out the max gradient for each example: pick out the edge labelings
@@ -1062,6 +1049,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         end
     end    
     loss = reshape(loss,4*size(E,1),m);
+    
    
     Ye = reshape(loss==0,4,size(E,1)*m);
     for u = 1:4
