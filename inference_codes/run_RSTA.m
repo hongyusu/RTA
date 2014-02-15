@@ -113,7 +113,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     %% generate random graph
     rand('twister', 0);
     % generate random graph (guess 200 base learner should be enough)
-    Nrep=1;
+    Nrep=3;
     Nnode=size(Y,2);
     Elist=cell(Nrep,1);
     for i=1:Nrep
