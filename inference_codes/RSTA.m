@@ -50,7 +50,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     cc = 1/size(E_list{1},1)/T_size;
     mu_list = cell(T_size);
     
-    E_list{2}(:)=E_list{1}(:);
+    
     
     for t=1:T_size
         [loss_list{t},Ye_list{t},ind_edge_val_list{t}] = compute_loss_vector(Y_tr,t,params.mlloss);
@@ -113,7 +113,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
         end
-        %progress_made = (obj >= prev_obj);  
+        progress_made = (obj >= prev_obj);  
         prev_obj = obj;
         compute_duality_gap;        % duality gap
         profile_update_tr;          % profile update for training
@@ -368,10 +368,7 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
         Y_kappa_val(t,:) = YmaxVal;
     end
     
-    
-    
-    
-    
+
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
@@ -479,13 +476,8 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
             Rmu_list{t}{u}(:,x) = mu(u,:)';
         end
         
-        
-        
-        
-
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
-        
     end
     
     
@@ -515,8 +507,7 @@ end
 % Output:
 function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
     % global variable
-    global l;
-    global E_list;
+    l = size(Y_kappa,2)/size(Y_kappa_val,2);
     % local variable
     Y_kappa_ind = Y_kappa_val * 0;
     Y_kappa = (Y_kappa+1)/2;
@@ -645,7 +636,8 @@ function profile_update_tr
         profile.next_profile_tm = profile.next_profile_tm + params.profile_tm_interval;
         profile.n_err_microlbl_prev = profile.n_err_microlbl;
         % compute training error
-        [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
+        [Ypred_tr,~] = par_compute_error(Y_tr,Kx_tr);
+        %[Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
         profile.microlabel_errors = sum(abs(Ypred_tr-Y_tr) >0,2);
         profile.n_err_microlbl = sum(profile.microlabel_errors);
         profile.p_err_microlbl = profile.n_err_microlbl/numel(Y_tr);
@@ -691,7 +683,47 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     end
     return
 end
-
+function [Ypred,YpredVal] = par_compute_error(Y,Kx) 
+    %% global variable
+    global T_size;
+    global E_list;
+    global Ye_list;
+    global mu_list;
+    global E;
+    global kappa;
+    Ypred = zeros(size(Y));
+    YpredVal = zeros(size(Y,1),1);
+    Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
+    Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
+    
+    %% compute K best
+    Y_tmp = cell(1,T_size);
+    Y_tmp_val = cell(1,T_size);
+    parfor t=1:T_size
+        E = E_list{t};
+        Ye = Ye_list{t};
+        mu = mu_list{t};
+        w_phi_e = par_compute_w_phi_e(Kx,E,Ye,mu);
+        [Y_tmp{t},Y_tmp_val{t}] = BestKDP(w_phi_e,kappa,E);
+    end
+    for t=1:T_size
+        Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp{t};
+        Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val{t};
+    end
+    
+    %% compute top 1
+    input_labels = cell(1,size(Y,1));
+    input_scores = cell(1,size(Y,1));
+    for i=1:size(Y,1)
+        input_labels{i} = Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:);
+        input_scores{i} = Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:);
+    end
+    parfor i=1:size(Y,1)
+        [Ypred(i,:),YpredVal(i,:)] = find_worst_violator(input_labels{i},input_scores{i});
+    end
+    
+    return
+end
 
 %% for testing
 % Input: test kernel, tree index
@@ -705,6 +737,27 @@ function w_phi_e = compute_w_phi_e(Kx,t)
     E = E_list{t};
     Ye = Ye_list{t};
     mu = mu_list{t};
+    Ye = reshape(Ye,4,size(E,1)*m);   
+    mu = reshape(mu,4,size(E,1)*m);
+    m_oup = size(Kx,2);
+
+    % compute gradient
+    if isempty(find(mu,1))
+        w_phi_e = zeros(4,size(E,1)*m_oup);
+    else  
+        w_phi_e = sum(mu);
+        w_phi_e = w_phi_e(ones(4,1),:);
+        w_phi_e = Ye.*w_phi_e;
+        w_phi_e = w_phi_e-mu;
+        w_phi_e = reshape(w_phi_e,4*size(E,1),m);
+        w_phi_e = w_phi_e*Kx;
+        w_phi_e = reshape(w_phi_e,4,size(E,1)*m_oup);
+    end
+end
+function w_phi_e = par_compute_w_phi_e(Kx,E,Ye,mu)
+
+    m = numel(mu)/size(E,1)/4;
+    
     Ye = reshape(Ye,4,size(E,1)*m);   
     mu = reshape(mu,4,size(E,1)*m);
     m_oup = size(Kx,2);
