@@ -28,6 +28,11 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global Kxx_mu_x_list;
     global kappa;
     
+    global PAR;
+    
+    PAR=0;
+    
+    
     
 
     
@@ -68,7 +73,11 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     print_message('Conditional gradient descend ...',0);
     primal_ub = Inf;
     opt_round = 0;
-    par_compute_duality_gap;
+    if PAR
+        par_compute_duality_gap;
+    else
+        compute_duality_gap;
+    end
     profile_update_tr;
    
 
@@ -109,13 +118,21 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_decrease_flags = zeros(1,m);
         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
-            [delta_obj_list,kappa_decrease_flags(xi)] = par_optimize_x(xi,kappa,iter);    % optimize on single example
+            if PAR
+                [delta_obj_list,kappa_decrease_flags(xi)] = par_optimize_x(xi,kappa,iter);    % optimize on single example
+            else
+                [delta_obj_list,kappa_decrease_flags(xi)] = optimize_x(xi,kappa,iter);    % optimize on single example
+            end
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
         end
         progress_made = (obj >= prev_obj);  
         prev_obj = obj;
-        par_compute_duality_gap;        % duality gap
+        if PAR
+            par_compute_duality_gap;        % duality gap
+        else
+            compute_duality_gap;
+        end
         profile_update_tr;          % profile update for training
         % update flip number
         if profile.n_err_microlbl > profile.n_err_microlbl_prev
@@ -413,8 +430,8 @@ function par_compute_duality_gap
         Kmu = Kmu_list_local{t};
         gradient_list_local{t} = cc*loss - (1/T_size)*Kmu;
         gradient = gradient_list_local{t};
-        %[Y_tmp{t},Y_tmp_val{t}] = BestKDP(gradient,kappa,E);
-        [Y_tmp{t},Y_tmp_val{t}] = compute_topk(gradient,kappa,E);
+        [Y_tmp{t},Y_tmp_val{t}] = BestKDP(gradient,kappa,E);
+        %[Y_tmp{t},Y_tmp_val{t}] = compute_topk(gradient,kappa,E);
         
     end
     for t=1:T_size
@@ -574,7 +591,7 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
     end
     
         
-    if x==0 %
+    if x==1 %
         [Gmax;G0;nomi;denomi;nomi./denomi;tau_list]'
     end
     
@@ -945,6 +962,7 @@ function profile_update_tr
     global obj;
     global primal_ub;
     global mu;
+    global PAR;
 
     
     tm = cputime;
@@ -958,7 +976,11 @@ function profile_update_tr
         profile.next_profile_tm = profile.next_profile_tm + params.profile_tm_interval;
         profile.n_err_microlbl_prev = profile.n_err_microlbl;
         % compute training error
+        if PAR
         [Ypred_tr,~] = par_compute_error(Y_tr,Kx_tr);
+        else
+        [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
+        end
         %[Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
         profile.microlabel_errors = sum(abs(Ypred_tr-Y_tr) >0,2);
         profile.n_err_microlbl = sum(profile.microlabel_errors);
@@ -1186,7 +1208,7 @@ function [Ymax,YmaxVal,Gmax] = BestKDP(gradient,K,E)
     
     %% iteration throught examples
     for training_i = 1:m
-        training_gradient = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));     
+        training_gradient = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));   
         P_node = zeros(K*nlabel,2*max(node_degree)); % score matrix
         T_node = zeros(K*nlabel,2*max(node_degree)); % tracker matrix
         %% iterate on each edge from leave to node to propagation messages
@@ -1358,7 +1380,6 @@ function [Ymax,YmaxVal,Gmax] = BestKDP(gradient,K,E)
     %toc
     return
 end
-
 function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
     %tic
     if nargin < 3
@@ -1386,20 +1407,19 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
     %% iteration throught examples
     for training_i = 1:m
         training_gradient = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));
-        training_gradient
+        
 
         
         % forward algorithm
         [P_node,T_node] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-        disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
+        %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
         %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
-        [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-
         
-        disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
-        disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
+        %[P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+        %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
+        %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
         
-        fasdfas
+        
 
         %% trace back
         node_degree(E(1,1)) = node_degree(E(1,1))+1;

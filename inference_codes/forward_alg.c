@@ -80,7 +80,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         // parent child index
         p = E[i];
         c = E[i+(l-1)];
-        //printf("i,p,c : %d,%d,%d\n",i,p,c);
+        //printf("=============== %d (%d->%d)\n",i,p,c);
 
         // update node score
         mxArray * in_blk_array;
@@ -167,8 +167,9 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     }
     /* one more iteration on root node */
     // update node score
+    c=p;
     mxArray * in_blk_array;
-    in_blk_array = mxCreateDoubleMatrix(K,max_node_degree,mxREAL);
+    in_blk_array = mxCreateDoubleMatrix(K,max_node_degree-1,mxREAL);
     double * in_blk = mxGetPr(in_blk_array);
     for(mint sign_pos=0;sign_pos<2;sign_pos++)
     {
@@ -178,27 +179,30 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             mint start_col=3-1+sign_pos; // start from the 3rd column
             for(mint jj=0;jj<mxGetN(in_blk_array);jj++)
             {
-                in_blk[ii+jj*(mxGetM(in_blk_array))]=P_node[(p*K+ii)+(start_col+jj*2)*(K*l)];
+                in_blk[ii+jj*(mxGetM(in_blk_array))]=P_node[((c-1)*K+ii)+(start_col+jj*2)*(K*l)];
             }
             start_col++;
         }
+        //printf("in block\n");printm(in_blk,K,max_node_degree-1);
         // compute topk for inblock -1
-        double * tmp_res = LinearMaxSum(in_blk_array,node_degree[p-1]);
+        double * tmp_res = LinearMaxSum(in_blk_array,node_degree[c-1]+1);
+        //printf("out block\n");printm(tmp_res,K,4);
         // assign value to P_node T_node
         for(mint ii=0;ii<mxGetM(in_blk_array);ii++)
         {
-            P_node[ii+p*K+sign_pos*(K*l)] = tmp_res[ii+K*max_node_degree];
+            //printf("position %d %d\n",ii+(c-1)*K+sign_pos*(K*l),ii+K*max_node_degree);
+            P_node[ii+(c-1)*K+sign_pos*(K*l)] = tmp_res[ii+K*(max_node_degree-1)];
             mint start_col = 3-1+sign_pos;
-
-
             for(mint jj=0;jj<mxGetN(in_blk_array);jj++)
             {
                 //printf("-->%d %d\n",ii+c*K+(start_col+jj*2)*(K*l),ii+jj*K);
-                T_node[ii+p*K+(start_col+jj*2)*(K*l)] = tmp_res[ii+jj*K];
+                T_node[ii+(c-1)*K+(start_col+jj*2)*(K*l)] = tmp_res[ii+jj*K];
             }
+            T_node[ii+(c-1)*K+(start_col-2)*(K*l)] = ii+1+(start_col-2)*K;
             start_col++;
         }
     }
+
     //printm(P_node,mxGetM(OUT_P_node),mxGetN(OUT_P_node));
     //printm(T_node,mxGetM(OUT_P_node),mxGetN(OUT_P_node));
         
@@ -208,11 +212,12 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
 {
-    
+    //printf("******\n");
     // input
     mint M_nrow = mxGetM(M_array);
     mint M_ncol = mxGetN(M_array);
     //printf("%d %d\n", M_nrow, M_ncol);
+    //printf("current node degree:%d\tM_nrow:%d\tM_ncol:%d\n",current_node_degree,M_nrow,M_ncol);
     double * M = mxGetPr(M_array);
     //output
     mxArray * res_array;
@@ -223,12 +228,12 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
     if(current_node_degree-1==0)
     {
         res[0+M_ncol*M_nrow]=1;
-       // printf("--%d %d \n",mxGetM(res_array),mxGetN(res_array));
+        //printf("--%d %d \n",mxGetM(res_array),mxGetN(res_array));
         //printm(res,M_nrow,M_ncol+1);
         return res;
     }
     
-    //printm(M,M_nrow,M_ncol);
+    //printf("M\n");printm(M,M_nrow,M_ncol);
     
     // initialization
     t_v2is * tmp_M;
@@ -289,6 +294,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
     for(mint ii=0;ii<M_nrow;ii++)
     {
         res[ii+M_nrow*M_ncol]=tmp_M[ii].v+1;
+        //printf("-----%d %.3f\n",ii+M_nrow*M_ncol,tmp_M[ii].v+1);
         for(mint jj=0;jj<current_node_degree-1;jj++)
         {res[ii+M_nrow*jj]=tmp_M[ii].i[jj];}
     }
