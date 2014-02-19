@@ -18,8 +18,6 @@
  *      P_node:
  *      T_node:
  */
-
-
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
     #define IN_gradient         prhs[0]
@@ -63,11 +61,6 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     OUT_T_node = mxCreateDoubleMatrix(K*l,2*max_node_degree,mxREAL);
     P_node = mxGetPr(OUT_P_node);
     T_node = mxGetPr(OUT_T_node);
-
-   
-
-
-
 
     mint p;
     mint c;
@@ -125,10 +118,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             for(mint jj=0;jj<2;jj++)
             {
                 if(P_node[(c-1)*K+ii%K+jj*K*l]>0)
-                {M[ii+jj*(K*2)] = P_node[(c-1)*K+ii%K+ii/K*K*l] + gradient[i*4+(ii/K)*2+jj];}
+                {M[ii+jj*(K*2)] = P_node[(c-1)*K+ii%K+ii/K*K*l] + gradient[i*4+(ii/K)+jj*2];}
                 else
                 {M[ii+jj*(K*2)] = 0;}
-                //printf("%d %d %d %.3f\n",ii,jj,i*4+(ii/K)*2+jj,gradient[i*4+(ii/K)*2+jj]);
+                //printf("%d %d %d %.3f\n",ii,jj,i*4+(ii/K)+jj*2,gradient[i*4+(ii/K)+jj*2]);
                 //printf("%d %d %d %.3f\n",ii,jj,(c-1)*K+ii%K+ii/K*K*l,P_node[(c-1)*K+ii%K+ii/K*K*l]);
                 //printf("%d, %d,%.3f\n",ii+jj*(K*2),ii%K+jj*2,P_node[c*K+ii%K+jj*K*l]+gradient[ii%K+jj*2]);
             }
