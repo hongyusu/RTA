@@ -1,7 +1,8 @@
 
 
 
-%%
+%% Random spanning tree approximation for structural output prediction
+%
 function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     %% define global variables
     global loss_list;   % losses associated with different edge labelings
@@ -28,8 +29,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global Kxx_mu_x_list;
     global kappa;
     
-    global PAR;
     
+    global PAR;
     PAR=1;
     
     
@@ -185,47 +186,7 @@ end
 
 
 % Complete gradient
-function Kmu = compute_Kmu(Kx,t)
-    global mu_list;
-    global E_list;
-    global ind_edge_val_list;
-    
-    mu = mu_list{t};
-    ind_edge_val = ind_edge_val_list{t};
-    E = E_list{t}; 
-    
-
-   
-    m_oup = size(Kx,2);
-    m = size(Kx,1);
-    if  0 %and(params.debugging, nargin == 2)
-        for x = 1:m
-           Kmu(:,x) = compute_Kmu_x(x,Kx(:,x));
-        end
-        Kmu = reshape(Kmu,4,size(E,1)*m);
-    else
-        mu_siz = size(mu);
-        mu = reshape(mu,4,size(E,1)*m);
-        Smu = reshape(sum(mu),size(E,1),m);
-        term12 =zeros(1,size(E,1)*m_oup);
-        Kmu = zeros(4,size(E,1)*m_oup);
-        for u = 1:4
-            IndEVu = full(ind_edge_val{u});    
-            Rmu_u = reshape(mu(u,:),size(E,1),m);
-            H_u = Smu.*IndEVu;
-            H_u = H_u - Rmu_u;
-            Q_u = H_u*Kx;
-            term12 = term12 + reshape(Q_u.*IndEVu,1,m_oup*size(E,1));
-            Kmu(u,:) = reshape(-Q_u,1,m_oup*size(E,1));
-        end
-        for u = 1:4
-            Kmu(u,:) = Kmu(u,:) + term12;
-        end
-    end
-    %mu = reshape(mu,mu_siz);
-    return
-end
-function Kmu = par_compute_Kmu(Kx,mu,E,ind_edge_val)
+function Kmu = compute_Kmu(Kx,mu,E,ind_edge_val)
 
     m_oup = size(Kx,2);
     m = size(Kx,1);
@@ -262,33 +223,7 @@ end
 %   x,Kx,t
 % Output
 %   gradient for current example x
-function Kmu_x = compute_Kmu_x(x,Kx,t)
-    % global
-    global E_list;
-    global ind_edge_val_list;
-    global Rmu_list;
-    global Smu_list;
-    % local
-    m = size(Kx,1);
-    term12 = zeros(1,size(E_list{t},1));
-    term34 = zeros(4,size(E_list{t},1));
-    
-    % main
-    % For speeding up gradient computations: 
-    % store sums of marginal dual variables, distributed by the
-    % true edge values into Smu
-    % store marginal dual variables, distributed by the
-    % pseudo edge values into Rmu
-   
-    for u = 1:4
-        Ind_te_u = full(ind_edge_val_list{t}{u}(:,x));
-        H_u = Smu_list{t}{u}*Kx-Rmu_list{t}{u}*Kx;
-        term12(1,Ind_te_u) = H_u(Ind_te_u)';
-        term34(u,:) = -H_u';
-    end
-    Kmu_x = reshape(term12(ones(4,1),:) + term34,4*size(E_list{t},1),1);
-end
-function Kmu_x = par_compute_Kmu_x(x,Kx,E,ind_edge_val,Rmu,Smu)
+function Kmu_x = compute_Kmu_x(x,Kx,E,ind_edge_val,Rmu,Smu)
 
     % local
     term12 = zeros(1,size(E,1));
@@ -364,11 +299,13 @@ function compute_duality_gap
         loss = loss_list{t};
         E = E_list{t};
         mu = mu_list{t};
+        ind_edge_val = ind_edge_val{t};
+        
         loss = reshape(loss,4,size(E,1)*m);
-        Kmu = compute_Kmu(Kx_tr,t);
+        Kmu = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
         Kmu = reshape(Kmu,4,size(E,1)*m);
         gradient = cc*loss - (1/T_size)*Kmu;
-        Gmax = compute_Gmax(gradient,Ypred,t);
+        Gmax = compute_Gmax(gradient,Ypred,E);
         mu = reshape(mu,4,m*size(E,1));
         duality_gap = params.C*max(Gmax,0) - sum(reshape(sum(gradient.*mu),size(E,1),m),1)';
         dgap(t) = sum(duality_gap);
@@ -411,7 +348,7 @@ function par_compute_duality_gap
     Y_tmp_val = cell(1,T_size);
     Kmu_list_local = cell(1,T_size);
     gradient_list_local = cell(1,T_size);
-    for t=1:T_size
+    parfor t=1:T_size
         pause(0.000);
         loss = loss_list{t};
         mu = mu_list{t};
@@ -425,7 +362,7 @@ function par_compute_duality_gap
     
         
         loss = reshape(loss,4,size(E,1)*m);        
-        Kmu_list_local{t} = par_compute_Kmu(Kx_tr,mu,E,ind_edge_val);
+        Kmu_list_local{t} = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
         Kmu_list_local{t} = reshape(Kmu_list_local{t},4,size(E,1)*m);
         Kmu = Kmu_list_local{t};
         gradient_list_local{t} = cc*loss - (1/T_size)*Kmu;
@@ -441,7 +378,7 @@ function par_compute_duality_gap
     
     
     %% get top '1' prediction by analyzing predictions from all trees
-    for i=1:size(Y,1)
+    parfor i=1:size(Y,1)
         [Ypred(i,:),YpredVal(i,:),~] = ...
             find_worst_violator(Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
@@ -460,7 +397,7 @@ function par_compute_duality_gap
         Kmu = Kmu_list_local{t};
         gradient = gradient_list_local{t};
         
-        Gmax = par_compute_Gmax(gradient,Ypred,E);
+        Gmax = compute_Gmax(gradient,Ypred,E);
         mu = reshape(mu,4,m*size(E,1));
         duality_gap = params.C*max(Gmax,0) - sum(reshape(sum(gradient.*mu),size(E,1),m),1)';
         dgap(t) = sum(duality_gap);
@@ -513,7 +450,9 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
         mu = mu_list{t}(:,x);
         E = E_list{t};
         % compute the quantity for tree t
-        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
+        Rmu = Rmu_list{t};
+        Smu = Smu_list{t};       
+        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         gradient =  cc*loss - (1/T_size)*Kmu_x;    % current gradient
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
@@ -544,11 +483,13 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
         ind_edge_val = ind_edge_val_list{t};
         mu = mu_list{t}(:,x);
         E = E_list{t};
+        Rmu = Rmu_list{t};
+        Smu = Smu_list{t};
 
         %% compute
-        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
+        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         gradient =  cc*loss - (1/T_size)*Kmu_x;
-        Gmax(t) = compute_Gmax(gradient,Ymax,t);            % objective under best labeling
+        Gmax(t) = compute_Gmax(gradient,Ymax,E);            % objective under best labeling
         G0(t) = -mu'*gradient;                               % current objective
         %% best margin violator into update direction mu_0
         Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
@@ -609,8 +550,9 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
         ind_edge_val = ind_edge_val_list{t};
         mu = mu_list{t}(:,x);
         E = E_list{t};
-        
-        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),t); % Kmu_x = K_x*mu_x
+        Rmu = Rmu_list{t};
+        Smu = Smu_list{t};       
+        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         
         
         gradient =  cc*loss - (1/T_size)*Kmu_x;
@@ -678,7 +620,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_optimize_x(x, kappa, iter)
         Smu = Smu_list{t};
         
         % compute the quantity for tree t
-        Kmu_x_list_local{t} = par_compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
+        Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         Kmu_x = Kmu_x_list_local{t};
         gradient_list_local{t} =  cc*loss - (1/T_size)*Kmu_x;    % current gradient    
         gradient = gradient_list_local{t};
@@ -720,7 +662,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_optimize_x(x, kappa, iter)
         %% 
         Kmu_x = Kmu_x_list_local{t};
         gradient = gradient_list_local{t};
-        Gmax(t) = par_compute_Gmax(gradient,Ymax,E);            % objective under best labeling
+        Gmax(t) = compute_Gmax(gradient,Ymax,E);            % objective under best labeling
         G0(t) = -mu'*gradient;                               % current objective
 
         %% best margin violator into update direction mu_0
@@ -811,21 +753,7 @@ end
 
 
 %% 
-function [Gmax] = compute_Gmax(gradient,Ymax,t)
-    global E_list;
-    m = size(Ymax,1);
-    E = E_list{t};
-    
-    gradient = reshape(gradient,4,size(E,1)*m);
-    Umax(1,:) = reshape(and(Ymax(:,E(:,1)) == -1,Ymax(:,E(:,2)) == -1)',1,size(E,1)*m);
-    Umax(2,:) = reshape(and(Ymax(:,E(:,1)) == -1,Ymax(:,E(:,2)) == 1)',1,size(E,1)*m);
-    Umax(3,:) = reshape(and(Ymax(:,E(:,1)) == 1,Ymax(:,E(:,2)) == -1)',1,size(E,1)*m);
-    Umax(4,:) = reshape(and(Ymax(:,E(:,1)) == 1,Ymax(:,E(:,2)) == 1)',1,size(E,1)*m);
-    % sum up the corresponding edge-gradients
-    Gmax = reshape(sum(gradient.*Umax),size(E,1),m);
-    Gmax = reshape(sum(Gmax,1),m,1);
-end
-function [Gmax] = par_compute_Gmax(gradient,Ymax,E)
+function [Gmax] = compute_Gmax(gradient,Ymax,E)
     m = size(Ymax,1);
     
     gradient = reshape(gradient,4,size(E,1)*m);
@@ -977,9 +905,9 @@ function profile_update_tr
         profile.n_err_microlbl_prev = profile.n_err_microlbl;
         % compute training error
         if PAR
-        [Ypred_tr,~] = par_compute_error(Y_tr,Kx_tr);
+            [Ypred_tr,~] = par_compute_error(Y_tr,Kx_tr);
         else
-        [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
+            [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
         end
         %[Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
         profile.microlabel_errors = sum(abs(Ypred_tr-Y_tr) >0,2);
@@ -1015,7 +943,9 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     % compute K best
     for t=1:T_size
         E = E_list{t};
-        w_phi_e = compute_w_phi_e(Kx,t);
+        Ye = Ye_list{t};
+        mu = mu_list{t};
+        w_phi_e = compute_w_phi_e(Kx,E,Ye,mu);
         [Y_tmp,Y_tmp_val] = compute_topk(w_phi_e,kappa,E);
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
@@ -1027,6 +957,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     end
     return
 end
+%%
 function [Ypred,YpredVal] = par_compute_error(Y,Kx) 
     %% global variable
     global T_size;
@@ -1048,7 +979,7 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
         E = E_list{t};
         Ye = Ye_list{t};
         mu = mu_list{t};
-        w_phi_e = par_compute_w_phi_e(Kx,E,Ye,mu);
+        w_phi_e = compute_w_phi_e(Kx,E,Ye,mu);
         [Y_tmp{t},Y_tmp_val{t}] = compute_topk(w_phi_e,kappa,E);
     end
     for t=1:T_size
@@ -1074,33 +1005,7 @@ end
 %% for testing
 % Input: test kernel, tree index
 % Output: gradient
-function w_phi_e = compute_w_phi_e(Kx,t)
-    %% global variable
-    global E_list;
-    global Ye_list;
-    global mu_list;
-    global m;
-    E = E_list{t};
-    Ye = Ye_list{t};
-    mu = mu_list{t};
-    Ye = reshape(Ye,4,size(E,1)*m);   
-    mu = reshape(mu,4,size(E,1)*m);
-    m_oup = size(Kx,2);
-
-    % compute gradient
-    if isempty(find(mu,1))
-        w_phi_e = zeros(4,size(E,1)*m_oup);
-    else  
-        w_phi_e = sum(mu);
-        w_phi_e = w_phi_e(ones(4,1),:);
-        w_phi_e = Ye.*w_phi_e;
-        w_phi_e = w_phi_e-mu;
-        w_phi_e = reshape(w_phi_e,4*size(E,1),m);
-        w_phi_e = w_phi_e*Kx;
-        w_phi_e = reshape(w_phi_e,4,size(E,1)*m_oup);
-    end
-end
-function w_phi_e = par_compute_w_phi_e(Kx,E,Ye,mu)
+function w_phi_e = compute_w_phi_e(Kx,E,Ye,mu)
 
     m = numel(mu)/size(E,1)/4;
     
