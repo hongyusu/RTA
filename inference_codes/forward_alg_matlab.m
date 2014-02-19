@@ -5,10 +5,10 @@
 %   Output: 
 %       P_node: score matrix
 %       T_node: pointer matrix
-function [P_node,T_node] = forward_alg_matlab(training_gradient,K,E,l,node_degree,max_node_degree);
+function [P_node,T_node] = forward_alg_matlab(training_gradient,K,E,l,node_degree,max_node_degree)
     nlabel=l;
-    P_node = zeros(K*nlabel,2*max(node_degree)); % score matrix
-    T_node = zeros(K*nlabel,2*max(node_degree)); % tracker matrix
+    P_node = zeros(K*nlabel,2*(max_node_degree+1)); % score matrix
+    T_node = zeros(K*nlabel,2*(max_node_degree+1)); % tracker matrix
     for i=size(E,1):-1:1
         if i==0
             break
@@ -56,7 +56,6 @@ function [P_node,T_node] = forward_alg_matlab(training_gradient,K,E,l,node_degre
     [P_node(row_block_chi_ind,1),T_node(row_block_chi_ind,col_block_ind)] = LinearMaxSum(P_node(row_block_chi_ind,col_block_ind));
     [P_node(row_block_chi_ind,2),T_node(row_block_chi_ind,col_block_ind+1)] = LinearMaxSum(P_node(row_block_chi_ind,col_block_ind+1));
     T_node(row_block_chi_ind,1:2) = [1:K;(1:K)+K]';
-        
 end
 
 %% linear time max sum

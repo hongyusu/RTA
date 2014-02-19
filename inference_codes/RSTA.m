@@ -24,19 +24,13 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global opt_round;
     global Rmu_list;
     global Smu_list;
-    global T_size;
-    global cc;
+    global T_size;  % number of trees
+    global cc;      % regularization constant
     global Kxx_mu_x_list;
-    global kappa;
+    global kappa;   % K best
+    global PAR;     % parallel compuing on matlab with matlabpool
     
-    
-    global PAR;
     PAR=1;
-    
-    
-    
-
-    
     
     %% initialize some of the global variables
     kappa=2;
@@ -53,7 +47,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
-    cc = 1/size(E_list{1},1)/T_size;
+    cc = 1/size(E_list{1},1)/T_size;    % regularized by number of trees and edges
     mu_list = cell(T_size);
     
     
@@ -80,8 +74,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         compute_duality_gap;
     end
     profile_update_tr;
-   
-
 
     params.maxiter = Inf;
        
@@ -150,11 +142,11 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Smu_list=Smu_list;
         end
         % update kappa
-%         if sum(kappa_decrease_flags)<m/2
-%             kappa = kappa*2;
-%         else
-%             kappa = max(ceil(kappa/2),2);
-%         end
+        if sum(kappa_decrease_flags)<m/2
+            kappa = kappa*2;
+        else
+            kappa = max(ceil(kappa/2),2);
+        end
         
     end
     
@@ -895,6 +887,7 @@ function profile_update_tr
     global primal_ub;
     global mu;
     global PAR;
+    global kappa
 
     
     tm = cputime;
@@ -920,12 +913,13 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) obj: %.2f gap: %.2f %%',...
+            sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d obj: %.2f gap: %.2f %%',...
             round(tm-profile.start_time),...
             profile.n_err,...
             profile.p_err*100,...
             profile.n_err_microlbl,...
             profile.p_err_microlbl*100,...
+            kappa,...
             obj,...
             (primal_ub-obj)/obj*100),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
@@ -1063,15 +1057,15 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
         training_gradient = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));
         
 
-        
+
         % forward algorithm
         %[P_node,T_node] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-        %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
-        %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
+%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
+%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
         
         [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-        %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
-        %disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
+%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
+%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
         
 
 
@@ -1246,8 +1240,9 @@ function profile_init
     profile.err_ts = 0;
 end
 
-%%
+%% initialize optimizer
 function optimizer_init
+    clear;
     global T_size;
     global Rmu_list;
     global Smu_list;
@@ -1255,8 +1250,7 @@ function optimizer_init
     global delta_obj;
     global opt_round;
     global E_list;
-    global Kx_tr;
-    m=size(Kx_tr,1);
+    global m;
     
     Rmu_list = cell(T_size,1);
     Smu_list = cell(T_size,1);

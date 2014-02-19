@@ -103,7 +103,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     catch err
         disp(err)
         mmcrf_c = 1;
-        mmcrf_g = 0.01;
+        mmcrf_g = 0.5;
         mmcrf_i = 10;
         mmcrf_ssc = 4;
     end
@@ -113,7 +113,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     %% generate random graph
     rand('twister', 0);
     % generate random graph (guess 200 base learner should be enough)
-    Nrep=1;
+    Nrep=10;
     Nnode=size(Y,2);
     Elist=cell(Nrep,1);
     for i=1:Nrep
