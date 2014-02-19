@@ -259,6 +259,7 @@ function compute_duality_gap
     global obj;
     global kappa;
     global cc;
+    global ind_edge_val_list;
     
     m=size(Kx_tr,1);
     Y=Y_tr;
@@ -272,9 +273,12 @@ function compute_duality_gap
     for t=1:T_size
         loss = loss_list{t};
         E = E_list{t};
+        mu = mu_list{t};
+        ind_edge_val = ind_edge_val_list{t};
         loss = reshape(loss,4,size(E,1)*m);
         
-        Kmu = compute_Kmu(Kx_tr,t);
+        Kmu = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
+
         Kmu = reshape(Kmu,4,size(E,1)*m);
         
         gradient = cc*loss - (1/T_size)*Kmu;
@@ -299,7 +303,7 @@ function compute_duality_gap
         loss = loss_list{t};
         E = E_list{t};
         mu = mu_list{t};
-        ind_edge_val = ind_edge_val{t};
+        ind_edge_val = ind_edge_val_list{t};
         
         loss = reshape(loss,4,size(E,1)*m);
         Kmu = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
@@ -933,13 +937,14 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     %% global variable
     global T_size;
     global E_list;
+    global Ye_list;
+    global mu_list;
     global E;
     global kappa;
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
-    
     % compute K best
     for t=1:T_size
         E = E_list{t};
@@ -969,8 +974,7 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
-    Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
-    
+    Y_kappa_val = zeros(size(Y,1)*T_size,kappa); 
     %% compute 'k' best from each random spanning tree
     Y_tmp = cell(1,T_size);
     Y_tmp_val = cell(1,T_size);
@@ -986,7 +990,6 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp{t};
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val{t};
     end
-    
     %% compute top '1' for all tree
     input_labels = cell(1,size(Y,1));
     input_scores = cell(1,size(Y,1));
