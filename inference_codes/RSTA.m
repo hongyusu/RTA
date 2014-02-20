@@ -436,6 +436,7 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
     global cc;
     global l;
     global Kx_tr;
+    global Y_tr;
     global T_size;
     global params;
     
@@ -468,6 +469,12 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
+    
+    if sum(Ymax~=Y_tr(x,:))==0
+        delta_obj_list = zeros(1,T_size);
+        kappa_decrease_flag=1;
+        return
+    end
     
     
     %% line serach
@@ -599,6 +606,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_optimize_x(x, kappa, iter)
     global cc;
     global l;
     global Kx_tr;
+    global Y_tr;
     global T_size;
     global params;
     
@@ -638,7 +646,11 @@ function [delta_obj_list,kappa_decrease_flag] = par_optimize_x(x, kappa, iter)
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
-    
+    if sum(Ymax~=Y_tr(x,:))==0
+        delta_obj_list = zeros(1,T_size);
+        kappa_decrease_flag=1;
+        return;
+    end
 % mytime = [mytime,cputime];
     
     %% line serach
@@ -895,7 +907,8 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     % compute top 1
     for i=1:size(Y,1)
         [Ypred(i,:),YpredVal(i,:),~] = ...
-            find_worst_violator(Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
+            find_worst_violator(Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
+            Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
     end
     return
 end
@@ -1066,7 +1079,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
-    %loss = loss*0+1;
+    loss = loss*0+1;
     return
 end
 
