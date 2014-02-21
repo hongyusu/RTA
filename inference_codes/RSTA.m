@@ -1012,14 +1012,39 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
         %% get training gradient
         training_gradient = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));
         %% forward algorithm to get P_node and T_node
-        %[P_node,T_node] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+        [P_node1,T_node1] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
         [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
+
+        if sum(sum(P_node~=P_node1))>0
+            afdsfsd
+        end
+        
+
+  
         %% backward algorithm to get Ymax and YmaxVal
+%         try
+%         [Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
+%         catch
+%        if node_degree(1)==2
+%             a=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node];
+%             b=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node];
+%             disp(a(550:640,:))
+%             disp(b(550:640,:))
+%             [P_node,T_node] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+%             a=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node];
+%             b=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node];
+%             disp(a(550:640,:))
+%             disp(b(550:640,:))
+%          afdsdf
+%        end
+%         end
         [Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
+            
+            
         
         Ymax(training_i,:) = Ymax_single;
         YmaxVal(training_i,:) = YmaxVal_single;       
@@ -1079,7 +1104,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
-    loss = loss*0+1;
+    %loss = loss*0+1;
     return
 end
 

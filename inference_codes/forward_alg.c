@@ -91,10 +91,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 }
                 start_col++;
             }
-            //printf("in block\n");printm(in_blk,K,max_node_degree);
+            //if(i==7){printf("in block\n");printm(in_blk,K,max_node_degree);}
             // compute topk for inblock -1
             double * tmp_res = LinearMaxSum(in_blk_array,node_degree[c-1]);
-            //printf("out block\n");printm(tmp_res,K,4);
+            //if(i==7){printf("out block\n");printm(tmp_res,K,4);}
             // assign value to P_node T_node
             for(mint ii=0;ii<mxGetM(in_blk_array);ii++)
             {
@@ -117,7 +117,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         {
             for(mint jj=0;jj<2;jj++)
             {
-                if(P_node[(c-1)*K+ii%K+jj*K*l]>0)
+                if(P_node[(c-1)*K+ii%K+ii/K*K*l])
                 {M[ii+jj*(K*2)] = P_node[(c-1)*K+ii%K+ii/K*K*l] + gradient[i*4+(ii/K)+jj*2];}
                 else
                 {M[ii+jj*(K*2)] = 0;}
@@ -126,7 +126,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 //printf("%d, %d,%.3f\n",ii+jj*(K*2),ii%K+jj*2,P_node[c*K+ii%K+jj*K*l]+gradient[ii%K+jj*2]);
             }
         }
-        //printm(M,mxGetM(M_array),mxGetN(M_array));
+        //if(i==7){printm(M,mxGetM(M_array),mxGetN(M_array));}
         // sort
         int c_in_p=0; // should be at least 1
         for(mint j=i;j<mxGetM(IN_E);j++)
@@ -150,10 +150,16 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             // put into correct block
             for(mint ii=0;ii<K;ii++)
             {
-                if(tmp_M[ii].v==0)
-                {break;}
-                T_node[(c-1)*K+ii+sign_pos*K*l] = tmp_M[ii].i;
-                P_node[(p-1)*K+ii+(c_in_p*2+sign_pos)*l*K] = tmp_M[ii].v;
+                if(tmp_M[ii].v>0)
+                {
+                    T_node[(c-1)*K+ii+sign_pos*K*l] = tmp_M[ii].i;
+                    P_node[(p-1)*K+ii+(c_in_p*2+sign_pos)*l*K] = tmp_M[ii].v;
+                }
+                else
+                {
+                    T_node[(c-1)*K+ii+sign_pos*K*l] = 0;
+                    P_node[(p-1)*K+ii+(c_in_p*2+sign_pos)*l*K] = 0;
+                }
             }
         }   
 
@@ -179,7 +185,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         //printf("in block\n");printm(in_blk,K,max_node_degree);
         // compute topk for inblock -1
         double * tmp_res = LinearMaxSum(in_blk_array,node_degree[c-1]+1);
-        //printf("out block\n");printm(tmp_res,K,4);
+        //printf("out block\n");printm(tmp_res,K,5);
         // assign value to P_node T_node
         for(mint ii=0;ii<mxGetM(in_blk_array);ii++)
         {
@@ -233,13 +239,18 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
     tmp_M = (struct v2is *) malloc((sizeof(t_v2is))*M_nrow);
     for(mint ii=0;ii<M_nrow;ii++)
     {
-        tmp_M[ii].v=M[ii];
-        tmp_M[ii].i=(mint *)malloc(sizeof(mint)*(current_node_degree-1));
-        if (tmp_M[ii].v>0)
-        {tmp_M[ii].i[0]=ii+1;}
+        if(M[ii]>0)
+        {
+            tmp_M[ii].v=M[ii];
+            tmp_M[ii].i=(mint *)malloc(sizeof(mint)*(current_node_degree-1));
+            tmp_M[ii].i[0]=ii+1;
+        }
         else
-        {tmp_M[ii].i[0]=0;}
-     
+        {
+            tmp_M[ii].v=0;
+            tmp_M[ii].i=(mint *)malloc(sizeof(mint)*(current_node_degree-1));
+            tmp_M[ii].i[0]=0;
+        }
     }
     // two column at a time
     for(mint ii=1;ii<(current_node_degree-1);ii++)
@@ -250,18 +261,51 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
         
         for(mint jj=0;jj<M_nrow;jj++)
         {
-            for(mint kk=0;kk<M_nrow;kk++)
+            //
+            if(tmp_M[jj].v > 0)
             {
-                tmp_M_long[jj*M_nrow+kk].v = tmp_M[jj].v+M[kk+ii*M_nrow];
-                tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));
-                // TODO
-                for(mint ll=0;ll<ii;ll++)
-                {tmp_M_long[jj*M_nrow+kk].i[ll] = tmp_M[jj].i[ll];}
-                if(M[kk+ii*M_nrow]>0)
-                {tmp_M_long[jj*M_nrow+kk].i[ii]=kk+1;}
-                else
-                {tmp_M_long[jj*M_nrow+kk].i[ii]=10;}
-                 
+                for(mint kk=0;kk<M_nrow;kk++)
+                {
+                    if(M[kk+ii*M_nrow]>0)
+                    {
+                        tmp_M_long[jj*M_nrow+kk].v = tmp_M[jj].v+M[kk+ii*M_nrow];
+                        tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));    
+                        for(mint ll=0;ll<ii;ll++)
+                        {tmp_M_long[jj*M_nrow+kk].i[ll] = tmp_M[jj].i[ll];}
+                        tmp_M_long[jj*M_nrow+kk].i[ii]=kk+1;
+                    }
+                    else
+                    {
+                        tmp_M_long[jj*M_nrow+kk].v = 0;
+                        tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));
+                        for(mint ll=0;ll<current_node_degree-1;ll++)
+                        {
+                            tmp_M_long[jj*M_nrow+kk].i[ll] = 0;
+                        }
+                    }
+                    tmp_M_long[jj*M_nrow+kk].v = tmp_M[jj].v+M[kk+ii*M_nrow];
+                    tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));
+                    // TODO
+                    for(mint ll=0;ll<ii;ll++)
+                    {tmp_M_long[jj*M_nrow+kk].i[ll] = tmp_M[jj].i[ll];}
+                    if(M[kk+ii*M_nrow]>0)
+                    {tmp_M_long[jj*M_nrow+kk].i[ii]=kk+1;}
+                    else
+                    {tmp_M_long[jj*M_nrow+kk].i[ii]=0;}
+                }
+            }
+            //
+            else
+            {
+                for(mint kk=0;kk<M_nrow;kk++)
+                {
+                    tmp_M_long[jj*M_nrow+kk].v = 0;
+                    tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));
+                    for(mint ll=0;ll<current_node_degree-1;ll++)
+                    {
+                        tmp_M_long[jj*M_nrow+kk].i[ll] = 0;
+                    }
+                }
             }
         }
         // update tmp_M
@@ -286,7 +330,14 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
     // collect results
     for(mint ii=0;ii<M_nrow;ii++)
     {
-        res[ii+M_nrow*M_ncol]=tmp_M[ii].v+1;
+        if(tmp_M[ii].v>0)
+        {
+            res[ii+M_nrow*M_ncol]=tmp_M[ii].v+1;
+        }
+        else
+        {
+            res[ii+M_nrow*M_ncol]=tmp_M[ii].v;
+        }
         //printf("-----%d %.3f\n",ii+M_nrow*M_ncol,tmp_M[ii].v+1);
         for(mint jj=0;jj<current_node_degree-1;jj++)
         {res[ii+M_nrow*jj]=tmp_M[ii].i[jj];}
