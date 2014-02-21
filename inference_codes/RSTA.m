@@ -847,11 +847,6 @@ function profile_update_tr
     
     tm = cputime;
     
-    print_message(...
-        sprintf('tm: %d iter: %d obj: %.2f mu: max %.2f min %.2f dgap: %.2f',...
-    round(tm-profile.start_time),profile.iter,obj,max(max(mu)),min(min(mu)),primal_ub-obj),...
-    5,sprintf('/var/tmp/%s.log',params.filestem));
-
     if params.profiling
         profile.next_profile_tm = profile.next_profile_tm + params.profile_tm_interval;
         profile.n_err_microlbl_prev = profile.n_err_microlbl;

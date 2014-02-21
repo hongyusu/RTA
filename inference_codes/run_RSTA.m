@@ -115,7 +115,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     % generate random graph (guess 200 base learner should be enough)
     
     
-    Nrep=5;
+    Nrep=1;
     
     
     Nnode=size(Y,2);
