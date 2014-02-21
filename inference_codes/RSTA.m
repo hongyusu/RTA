@@ -148,7 +148,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Smu_list=Smu_list;
         end
         % update kappa
-        if sum(kappa_decrease_flags)<m*0.9
+        if sum(kappa_decrease_flags)<m*0.75
             kappa = kappa*2;
         else
             kappa = max(ceil(kappa/2),2);
@@ -156,11 +156,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         
     end
     
-    
-    
-    
-    
-    % last iteration
+
+    %% last optimization iteration
     iter = best_iter+1;
     kappa = best_kappa;
     mu_list = best_mu_list;
@@ -168,11 +165,30 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Rmu_list = best_Rmu_list;
     Smu_list = best_Smu_list;
     for xi=1:m
-        [delta_obj] = optimize_x(xi,kappa,iter);
-        % TODO
-        %profile_update_tr;
+        if PAR
+            [~,~] = par_optimize_x(xi,kappa,iter);    % optimize on single example
+        else
+            [~,~] = optimize_x(xi,kappa,iter);    % optimize on single example
+        end
+        profile_update_tr;
+        if profile.n_err_microlbl < best_n_err_microlbl
+            best_n_err_microlbl=profile.n_err_microlbl;
+            best_iter = iter;
+            best_kappa = kappa;
+            best_mu_list=mu_list;
+            best_Kxx_mu_x_list=Kxx_mu_x_list;
+            best_Rmu_list=Rmu_list;
+            best_Smu_list=Smu_list;
+        end
     end
     
+    %% final prediction
+    iter = best_iter+1;
+    kappa = best_kappa;
+    mu_list = best_mu_list;
+    Kxx_mu_x_list = best_Kxx_mu_x_list;
+    Rmu_list = best_Rmu_list;
+    Smu_list = best_Smu_list;
     profile_update;
     
     
@@ -797,6 +813,7 @@ function profile_update
     global Kx_ts;
     global mu;
     global obj;
+    global PAR;
     global primal_ub;
     m = size(Ye,2);
     tm = cputime;
@@ -806,14 +823,24 @@ function profile_update
         profile.next_profile_tm = profile.next_profile_tm + params.profile_tm_interval;
         profile.n_err_microlbl_prev = profile.n_err_microlbl;
 
-        [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
+        %% train
+        if PAR
+            [Ypred_tr,~] = par_compute_error(Y_tr,Kx_tr);
+        else
+            [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
+        end
         profile.microlabel_errors = sum(abs(Ypred_tr-Y_tr) >0,2);
         profile.n_err_microlbl = sum(profile.microlabel_errors);
         profile.p_err_microlbl = profile.n_err_microlbl/numel(Y_tr);
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
 
-        [Ypred_ts,Ypred_ts_val] = compute_error(Y_ts,Kx_ts);
+        %% test
+        if PAR
+            [Ypred_ts,~] = par_compute_error(Y_ts,Kx_ts);
+        else
+            [Ypred_ts,~] = compute_error(Y_ts,Kx_ts);
+        end
         profile.microlabel_errors_ts = sum(abs(Ypred_ts-Y_ts) > 0,2);
         profile.n_err_microlbl_ts = sum(profile.microlabel_errors_ts);
         profile.p_err_microlbl_ts = profile.n_err_microlbl_ts/numel(Y_ts);
@@ -822,12 +849,20 @@ function profile_update
 
         print_message(...
             sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) 1_er_ts: %d (%3.2f) er_ts: %d (%3.2f)',...
-        round(tm-profile.start_time),profile.n_err,profile.p_err*100,profile.n_err_microlbl,profile.p_err_microlbl*100,round(profile.p_err_ts*size(Y_ts,1)),profile.p_err_ts*100,sum(profile.microlabel_errors_ts),sum(profile.microlabel_errors_ts)/numel(Y_ts)*100),0,sprintf('/var/tmp/%s.log',params.filestem));
+            round(tm-profile.start_time),...
+            profile.n_err,...
+            profile.p_err*100,...
+            profile.n_err_microlbl,...
+            profile.p_err_microlbl*100,...
+            round(profile.p_err_ts*size(Y_ts,1)),...
+            profile.p_err_ts*100,sum(profile.microlabel_errors_ts),...
+            sum(profile.microlabel_errors_ts)/numel(Y_ts)*100),...
+            0,sprintf('/var/tmp/%s.log',params.filestem));
         %print_message(sprintf('%d here',profile.microlabel_errors_ts),4);
 
         running_time = tm-profile.start_time;
         sfile = sprintf('/var/tmp/Ypred_%s.mat',params.filestem);
-        save(sfile,'Ypred_tr','Ypred_ts','params','Ypred_ts_val','running_time');
+        save(sfile,'Ypred_tr','Ypred_ts','params','running_time');
         Ye = reshape(Ye,4*size(E,1),m);
     end
 end
@@ -840,11 +875,9 @@ function profile_update_tr
     global Kx_tr;
     global obj;
     global primal_ub;
-    global mu;
     global PAR;
     global kappa
 
-    
     tm = cputime;
     
     if params.profiling

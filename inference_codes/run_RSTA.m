@@ -103,7 +103,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     catch err
         disp(err)
         mmcrf_c = 1;
-        mmcrf_g = 0.001;
+        mmcrf_g = 0.5;
         mmcrf_i = 10;
         mmcrf_ssc = 4;
     end
