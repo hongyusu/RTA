@@ -91,10 +91,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 }
                 start_col++;
             }
-            //if(i==7){printf("in block\n");printm(in_blk,K,max_node_degree);}
+            //printf("in block\n");printm(in_blk,K,max_node_degree);
             // compute topk for inblock -1
             double * tmp_res = LinearMaxSum(in_blk_array,node_degree[c-1]);
-            //if(i==7){printf("out block\n");printm(tmp_res,K,4);}
+            //printf("out block\n");printm(tmp_res,K,max_node_degree+1);
             // assign value to P_node T_node
             for(mint ii=0;ii<mxGetM(in_blk_array);ii++)
             {
@@ -252,6 +252,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
             tmp_M[ii].i[0]=0;
         }
     }
+    //for(mint jj=0;jj<M_nrow;jj++){printf("tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);}
     // two column at a time
     for(mint ii=1;ii<(current_node_degree-1);ii++)
     {
@@ -283,15 +284,6 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
                             tmp_M_long[jj*M_nrow+kk].i[ll] = 0;
                         }
                     }
-                    tmp_M_long[jj*M_nrow+kk].v = tmp_M[jj].v+M[kk+ii*M_nrow];
-                    tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));
-                    // TODO
-                    for(mint ll=0;ll<ii;ll++)
-                    {tmp_M_long[jj*M_nrow+kk].i[ll] = tmp_M[jj].i[ll];}
-                    if(M[kk+ii*M_nrow]>0)
-                    {tmp_M_long[jj*M_nrow+kk].i[ii]=kk+1;}
-                    else
-                    {tmp_M_long[jj*M_nrow+kk].i[ii]=0;}
                 }
             }
             //
@@ -308,6 +300,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
                 }
             }
         }
+        //for(mint jj=0;jj<M_nrow*M_nrow;jj++){printf("tmp_M_long %.4f %d %d %d\n",tmp_M_long[jj].v,tmp_M_long[jj].i[0],tmp_M_long[jj].i[1],tmp_M_long[jj].i[2]);}
         // update tmp_M
         //for(mint jj=0;jj<M_nrow*M_nrow;jj++){printf("before %d %d ->%.3f %d %d %d\n", ii,jj,tmp_M_long[jj].v, tmp_M_long[jj].i[0], tmp_M_long[jj].i[1],tmp_M_long[jj].i[2]);} 
         qsort(tmp_M_long, M_nrow*M_nrow, sizeof(t_v2is), (void *)compare_structs_is);

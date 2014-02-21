@@ -1019,7 +1019,10 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
 
-        if sum(sum(P_node~=P_node1))>0
+        if sum(sum(T_node~=T_node1))>0
+            disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
+            disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node1])
+            disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node-P_node1])
             afdsfsd
         end
         
