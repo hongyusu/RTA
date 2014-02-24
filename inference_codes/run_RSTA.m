@@ -102,20 +102,20 @@ function run_RSTA(filename,graph_type,t,isTest)
         mmcrf_i=selected_parameters(3);
     catch err
         disp(err)
-        mmcrf_c = 100;
+        mmcrf_c = 10;
         mmcrf_g = 0.1;
         mmcrf_i = 100;
         mmcrf_ssc = 4;
     end
     % display something
-    disp([mmcrf_c,mmcrf_g,mmcrf_i])
+    fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
     
     %% generate random graph
     rand('twister', 0);
     % generate random graph (guess 200 base learner should be enough)
     
     
-    Nrep=10;
+    Nrep=2;
     
     
     Nnode=size(Y,2);

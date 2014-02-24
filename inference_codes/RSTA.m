@@ -110,6 +110,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         iter = iter +1;   
         kappa_decrease_flags = zeros(1,m);
         for xi = 1:m
+        %for xi = randsample(1:m,ceil(m*0.8))
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_condition_gradient_descent(xi,kappa,iter);    % optimize on single example
@@ -476,7 +477,10 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
         Rmu = Rmu_list{t};
         Smu = Smu_list{t};       
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
-        %[cc, cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
+        if x==0
+            [cc, cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
+            reshape(mu,4,9)
+        end
         gradient =  cc*loss - (1/T_size)*Kmu_x;    % current gradient
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
@@ -538,9 +542,16 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
         
         
         Kmu_0 = Kmu_x + kxx_mu_0{t} - Kxx_mu_x_list{t}(:,x);
+        
 
         mu_d = mu_0 - mu;
         Kmu_d = Kmu_0-Kmu_x;
+        
+        if x==0
+            disp('-->')
+            reshape(mu_0,4,9)
+                reshape(mu_d,4,9)
+        end
         
         
         Kmu_d_list{t} = Kmu_d;
@@ -563,7 +574,7 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
     
         
     if x==0 %
-        [Gmax;G0;nomi;denomi;nomi./denomi;tau_list]'
+        [sum(Gmax),sum(G0),sum(Gmax>G0),tau]
     end
     
 
@@ -604,6 +615,10 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
         
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
+    end
+    
+    if x==0
+        reshape(mu,4,9)
     end
     
     
