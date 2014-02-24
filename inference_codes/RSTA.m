@@ -46,7 +46,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
-    cc = 1/size(E_list{1},1)/T_size;    % regularized by number of trees and edges
+    %cc = 1/size(E_list{1},1)/T_size;    % regularized by number of trees and edges
+    cc  = 1/T_size;
     mu_list = cell(T_size);
     
     
@@ -74,7 +75,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     end
     profile_update_tr;
 
-    params.maxiter = Inf;
+    %params.maxiter = Inf;
        
     
     %% iterate until converge
@@ -111,9 +112,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
-                [delta_obj_list,kappa_decrease_flags(xi)] = par_optimize_x(xi,kappa,iter);    % optimize on single example
+                [delta_obj_list,kappa_decrease_flags(xi)] = par_condition_gradient_descent(xi,kappa,iter);    % optimize on single example
             else
-                [delta_obj_list,kappa_decrease_flags(xi)] = optimize_x(xi,kappa,iter);    % optimize on single example
+                [delta_obj_list,kappa_decrease_flags(xi)] = condition_gradient_descent(xi,kappa,iter);    % optimize on single example
             end
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
@@ -158,27 +159,29 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
 
     %% last optimization iteration
-    iter = best_iter+1;
-    kappa = best_kappa;
-    mu_list = best_mu_list;
-    Kxx_mu_x_list = best_Kxx_mu_x_list;
-    Rmu_list = best_Rmu_list;
-    Smu_list = best_Smu_list;
-    for xi=1:m
-        if PAR
-            [~,~] = par_optimize_x(xi,kappa,iter);    % optimize on single example
-        else
-            [~,~] = optimize_x(xi,kappa,iter);    % optimize on single example
-        end
-        profile_update_tr;
-        if profile.n_err_microlbl < best_n_err_microlbl
-            best_n_err_microlbl=profile.n_err_microlbl;
-            best_iter = iter;
-            best_kappa = kappa;
-            best_mu_list=mu_list;
-            best_Kxx_mu_x_list=Kxx_mu_x_list;
-            best_Rmu_list=Rmu_list;
-            best_Smu_list=Smu_list;
+    if paramsIn.extra_iter
+        iter = best_iter+1;
+        kappa = best_kappa;
+        mu_list = best_mu_list;
+        Kxx_mu_x_list = best_Kxx_mu_x_list;
+        Rmu_list = best_Rmu_list;
+        Smu_list = best_Smu_list;
+        for xi=1:m
+            if PAR
+                [~,~] = par_condition_gradient_descent(xi,kappa,iter);    % optimize on single example
+            else
+                [~,~] = condition_gradient_descent(xi,kappa,iter);    % optimize on single example
+            end
+            profile_update_tr;
+            if profile.n_err_microlbl < best_n_err_microlbl
+                best_n_err_microlbl=profile.n_err_microlbl;
+                best_iter = iter;
+                best_kappa = kappa;
+                best_mu_list=mu_list;
+                best_Kxx_mu_x_list=Kxx_mu_x_list;
+                best_Rmu_list=Rmu_list;
+                best_Smu_list=Smu_list;
+            end
         end
     end
     
@@ -435,7 +438,7 @@ end
 %   x   --> the id of current training example
 %   obj --> current objective
 %   kappa --> current kappa
-function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
+function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, kappa, iter)
     global loss_list;
     global loss;
     global Ye_list;
@@ -473,6 +476,7 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
         Rmu = Rmu_list{t};
         Smu = Smu_list{t};       
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
+        %[cc, cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
         gradient =  cc*loss - (1/T_size)*Kmu_x;    % current gradient
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
@@ -605,7 +609,7 @@ function [delta_obj_list,kappa_decrease_flag] = optimize_x(x, kappa, iter)
     
     return
 end
-function [delta_obj_list,kappa_decrease_flag] = par_optimize_x(x, kappa, iter)
+function [delta_obj_list,kappa_decrease_flag] = par_condition_gradient_descent(x, kappa, iter)
     global loss_list;
     global loss;
     global Ye_list;
@@ -649,6 +653,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_optimize_x(x, kappa, iter)
         % compute the quantity for tree t
         Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         Kmu_x = Kmu_x_list_local{t};
+        [cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
         gradient_list_local{t} =  cc*loss - (1/T_size)*Kmu_x;    % current gradient    
         gradient = gradient_list_local{t};
         % find top k violator
@@ -1040,19 +1045,22 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
         %% get training gradient
         training_gradient = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));
         %% forward algorithm to get P_node and T_node
-        [P_node1,T_node1] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+        %[P_node1,T_node1] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
         [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
 
-        if sum(sum(T_node~=T_node1))>0
-            disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
-            disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node1])
-            disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node-P_node1])
-            afdsfsd
-        end
+%         if sum(sum(T_node~=T_node1))>0
+%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
+%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node1])
+%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node-P_node1])
+%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
+%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node1])
+%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node-T_node1])
+%             afdsfsd
+%         end
         
 
   
@@ -1135,7 +1143,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
-    %loss = loss*0+1;
+    loss = loss*0+1;
     return
 end
 

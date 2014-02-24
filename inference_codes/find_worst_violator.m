@@ -2,6 +2,11 @@
 % Input: Y_kappa, Y_kappa_val
 % Output:
 function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
+%     if nargin == 3
+%         Y_ind_true = bin2dec(strrep(sprintf('%d ',(Y_true+1)/2),' ',''));
+%     else
+%         Y_ind_true = -1;
+%     end
 %tic
     % global variable
     l = size(Y_kappa,2)/size(Y_kappa_val,2);
@@ -23,7 +28,6 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
     if sum(Y_kappa_ind(:,1)==Y_kappa_ind(:,2))>0
         Y_kappa_ind
         Y_kappa_val
-        Y0_ind
         %reshape(Y_kappa,numel(Y_kappa)/10,10)
     end
     %
@@ -32,23 +36,29 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
         t_line = sum(Y_kappa_val(:,i));
         current_matrix_val = Y_kappa_val(:,1:i);
         current_matrix_ind = Y_kappa_ind(:,1:i);
-        %unique_elements = unique(current_matrix_ind(current_matrix_ind~=Y0_ind));
+%         unique_elements = unique(current_matrix_ind(current_matrix_ind~=Y_ind_true));
+%         if size(unique_elements,1) == 0
+%             continue
+%         end
         unique_elements = unique(current_matrix_ind);
         element_id=0;
         element_val=-1;
         element_id_mean=0;
         element_val_mean=-1;
-        for j=1:size(unique_elements,1)
+        for j=1:size(unique_elements,2)
             current_val = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
             current_id = unique_elements(j);
+            %[i,j,current_id, current_val,Y_ind_true,current_id ~= Y_ind_true]
             if current_val > element_val
-                element_val = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
+                %element_val = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
+                element_val = current_val;
                 element_id = current_id;
             end
             current_val_mean = mean(current_matrix_val(current_matrix_ind==unique_elements(j)));
             current_id_mean = unique_elements(j);
             if current_val_mean > element_val_mean
-                element_val_mean = mean(current_matrix_val(current_matrix_ind==unique_elements(j)));
+                %element_val_mean = mean(current_matrix_val(current_matrix_ind==unique_elements(j)));
+                element_val_mean = current_val_mean;
                 element_id_mean = current_id_mean;                
             end
         end

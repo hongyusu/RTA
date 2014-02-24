@@ -102,9 +102,9 @@ function run_RSTA(filename,graph_type,t,isTest)
         mmcrf_i=selected_parameters(3);
     catch err
         disp(err)
-        mmcrf_c = 1;
-        mmcrf_g = 0.5;
-        mmcrf_i = 10;
+        mmcrf_c = 100;
+        mmcrf_g = 0.1;
+        mmcrf_i = 100;
         mmcrf_ssc = 4;
     end
     % display something
@@ -115,7 +115,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     % generate random graph (guess 200 base learner should be enough)
     
     
-    Nrep=1;
+    Nrep=10;
     
     
     Nnode=size(Y,2);
