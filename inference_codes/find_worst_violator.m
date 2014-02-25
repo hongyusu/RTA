@@ -25,7 +25,7 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
             end
         end
     end
-    if sum(Y_kappa_ind(:,1)==Y_kappa_ind(:,2))>0
+    if sum(Y_kappa_ind(:,1)==Y_kappa_ind(:,2))> 0
         Y_kappa_ind
         Y_kappa_val
         %reshape(Y_kappa,numel(Y_kappa)/10,10)
@@ -41,20 +41,25 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
 %             continue
 %         end
         unique_elements = unique(current_matrix_ind);
+        if size(unique_elements) == 1
+            break_flag=1;
+            element_id = unique_elements(1);
+            break
+        end
         element_id=0;
         element_val=-1;
         element_id_mean=0;
         element_val_mean=-1;
-        for j=1:size(unique_elements,2)
+        for j=1:size(unique_elements,1)
             current_val = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
             current_id = unique_elements(j);
-            %[i,j,current_id, current_val,Y_ind_true,current_id ~= Y_ind_true]
+            %[i,j,current_id, current_val]
             if current_val > element_val
                 %element_val = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
                 element_val = current_val;
                 element_id = current_id;
             end
-            current_val_mean = mean(current_matrix_val(current_matrix_ind==unique_elements(j)));
+            current_val_mean = sum(current_matrix_val(current_matrix_ind==unique_elements(j)));
             current_id_mean = unique_elements(j);
             if current_val_mean > element_val_mean
                 %element_val_mean = mean(current_matrix_val(current_matrix_ind==unique_elements(j)));

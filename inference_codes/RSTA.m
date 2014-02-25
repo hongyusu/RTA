@@ -28,11 +28,19 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global Kxx_mu_x_list;
     global kappa;   % K best
     global PAR;     % parallel compuing on matlab with matlabpool
+    global kappa_decrease_flags;  
     
-    PAR=0;
+    if T_size > 20
+        PAR=1;
+    else
+        PAR =0;
+    end
     
-    %% initialize some of the global variables
-    kappa=2;
+    kappa_MIN = 4; 
+    kappa_MAX = 64;
+    kappa_INIT = 8;
+    kappa=kappa_INIT;
+
     params=paramsIn;
     Kx_tr=dataIn.Kx_tr;
     Kx_ts=dataIn.Kx_ts;
@@ -46,10 +54,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
-    %cc = 1/size(E_list{1},1)/T_size;    % regularized by number of trees and edges
     cc  = 1/T_size;
     mu_list = cell(T_size);
-    
     
     
     for t=1:T_size
@@ -75,7 +81,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     end
     profile_update_tr;
 
-    %params.maxiter = Inf;
        
     
     %% iterate until converge
@@ -150,10 +155,10 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Smu_list=Smu_list;
         end
         % update kappa
-        if sum(kappa_decrease_flags)<m*0.75
-            kappa = kappa*2;
+        if sum(kappa_decrease_flags)<m*.8
+            kappa = min(kappa*2,kappa_MAX);
         else
-            kappa = max(ceil(kappa/2),2);
+            kappa = max(ceil(kappa/2),kappa_MIN);
         end
         
     end
@@ -494,6 +499,8 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
     
+
+    %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);
         kappa_decrease_flag=1;
@@ -501,7 +508,7 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
     end
     
     
-    %% line serach
+    %% otherwise line serach
     mu_d_list = mu_list;
     print_message(sprintf('Line search'),3)
     nomi=zeros(1,T_size);
@@ -540,9 +547,7 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
             kxx_mu_0{t} = zeros(size(mu));
         end
         
-        
         Kmu_0 = Kmu_x + kxx_mu_0{t} - Kxx_mu_x_list{t}(:,x);
-        
 
         mu_d = mu_0 - mu;
         Kmu_d = Kmu_0-Kmu_x;
@@ -553,7 +558,6 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
                 reshape(mu_d,4,9)
         end
         
-        
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
@@ -563,18 +567,19 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
     
     % decide whether to update or not
     %if sum(Gmax>=G0) == numel(G0)
-    if sum(Gmax)>=sum(G0)
+    if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size *1
         tau = min(sum(nomi)/sum(denomi),1);
         %tau = params.ssc/(params.ssc+iter);
-        tau_list = min(nomi./denomi,1);
+        %tau_list = min(nomi./denomi,1);
     else
         tau=0;
-        tau_list = nomi*0;
+        %tau_list = nomi*0;
     end
     
         
-    if x==0 %
-        [sum(Gmax),sum(G0),sum(Gmax>G0),tau]
+    if x==0
+        [x,sum(Gmax),sum(G0),sum(Gmax>G0),tau]
+        [Gmax;G0]
     end
     
 
@@ -618,7 +623,7 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
     end
     
     if x==0
-        reshape(mu,4,9)
+            delta_obj_list
     end
     
     
@@ -668,7 +673,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_condition_gradient_descent(x
         % compute the quantity for tree t
         Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         Kmu_x = Kmu_x_list_local{t};
-        [cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
+        %[cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
         gradient_list_local{t} =  cc*loss - (1/T_size)*Kmu_x;    % current gradient    
         gradient = gradient_list_local{t};
         % find top k violator
@@ -682,6 +687,9 @@ function [delta_obj_list,kappa_decrease_flag] = par_condition_gradient_descent(x
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
+
+
+    %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);
         kappa_decrease_flag=1;
@@ -689,7 +697,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_condition_gradient_descent(x
     end
 % mytime = [mytime,cputime];
     
-    %% line serach
+%% otherwise line serach
     mu_d_list = mu_list;
     print_message(sprintf('Line search'),3)
     nomi=zeros(1,T_size);
@@ -749,7 +757,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_condition_gradient_descent(x
     
     % decide whether to update or not
     %if sum(Gmax>=G0) == numel(G0)
-    if sum(Gmax)>=sum(G0) && sum(Gmax>G0)>T_size/2
+    if sum(Gmax)>=sum(G0) %&& sum(Gmax>G0)>T_size/2
         tau = min(sum(nomi)/sum(denomi),1);
         %tau = params.ssc/(params.ssc+iter);
         %tau_list = min(nomi./denomi,1);
@@ -896,7 +904,9 @@ function profile_update_tr
     global obj;
     global primal_ub;
     global PAR;
-    global kappa
+    global kappa;
+    global opt_round;
+    global kappa_decrease_flags;
 
     tm = cputime;
     
@@ -916,13 +926,15 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('tm: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d obj: %.2f gap: %.2f %%',...
+            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d (%.1f) obj: %.2f gap: %.2f %%',...
             round(tm-profile.start_time),...
+            opt_round,...
             profile.n_err,...
             profile.p_err*100,...
             profile.n_err_microlbl,...
             profile.p_err_microlbl*100,...
             kappa,...
+            sum(kappa_decrease_flags)/size(Y_tr,1),...
             obj,...
             (primal_ub-obj)/obj*100),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
