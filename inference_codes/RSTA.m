@@ -132,6 +132,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
 %             end
 %             profile_update_tr;
         end
+        %obj_list
         progress_made = (obj >= prev_obj);  
         prev_obj = obj;
         if PAR
@@ -532,6 +533,7 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
         gradient =  cc*loss - (1/T_size)*Kmu_x;
         Gmax(t) = compute_Gmax(gradient,Ymax,E);            % objective under best labeling
         G0(t) = -mu'*gradient;                               % current objective
+        
         %% best margin violator into update direction mu_0
         Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
         mu_0 = zeros(size(mu));
@@ -552,16 +554,14 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
         mu_d = mu_0 - mu;
         Kmu_d = Kmu_0-Kmu_x;
         
-        if x==0
-            disp('-->')
-            reshape(mu_0,4,9)
-                reshape(mu_d,4,9)
-        end
-        
+%         if x==1
+%             [sum(sum(Kmu_d)),sum(sum(gradient)),sum(sum(loss))]
+%         end
+%         
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
-        denomi(t) = Kmu_d' * mu_d;
+        denomi(t) = (1/T_size)*Kmu_d' * mu_d;
         
     end
     
@@ -569,17 +569,15 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
     %if sum(Gmax>=G0) == numel(G0)
     if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size *1
         tau = min(sum(nomi)/sum(denomi),1);
-        %tau = params.ssc/(params.ssc+iter);
-        %tau_list = min(nomi./denomi,1);
     else
         tau=0;
-        %tau_list = nomi*0;
     end
     
-        
     if x==0
+        disp('--->')
         [x,sum(Gmax),sum(G0),sum(Gmax>G0),tau]
         [Gmax;G0]
+        nomi./denomi
     end
     
 
@@ -749,7 +747,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_condition_gradient_descent(x
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
-        denomi(t) = Kmu_d' * mu_d;
+        denomi(t) = (1/T_size)*Kmu_d' * mu_d;
 
         
     end
