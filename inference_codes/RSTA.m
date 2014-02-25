@@ -36,9 +36,15 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         PAR =0;
     end
     
-    kappa_MIN = 4; 
+    if T_size == 1
+        kappa_MIN = 2;
+        kappa_INIT=2;
+    else
+        kappa_INIT = 8;
+        kappa_MIN = 4; 
+    end
     kappa_MAX = 64;
-    kappa_INIT = 8;
+    
     kappa=kappa_INIT;
 
     params=paramsIn;
@@ -118,9 +124,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %for xi = randsample(1:m,ceil(m*0.8))
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
-                [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
             else
-                [delta_obj_list,kappa_decrease_flags(xi)] = conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [delta_obj_list,kappa_decrease_flags(xi)] = conditional_gradient_descent(xi,kappa);    % optimize on single example
             end
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
@@ -175,9 +181,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         Smu_list = best_Smu_list;
         for xi=1:m
             if PAR
-                [~,~] = par_conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [~,~] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
             else
-                [~,~] = conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [~,~] = conditional_gradient_descent(xi,kappa);    % optimize on single example
             end
             profile_update_tr;
             if profile.n_err_microlbl < best_n_err_microlbl
@@ -445,7 +451,7 @@ end
 %   x   --> the id of current training example
 %   obj --> current objective
 %   kappa --> current kappa
-function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, kappa, iter)
+function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, kappa)
     global loss_list;
     global loss;
     global Ye_list;
@@ -466,8 +472,6 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global T_size;
     global params;
     
-
-    
     %% collect top-K prediction from each tree
     print_message(sprintf('Collect top-k prediction from each tree T-size %d', T_size),3)
     Y_kappa = zeros(T_size,kappa*l);        % label prediction
@@ -479,18 +483,13 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         ind_edge_val = ind_edge_val_list{t};
         mu = mu_list{t}(:,x);
         E = E_list{t};
-        % compute the quantity for tree t
         Rmu = Rmu_list{t};
         Smu = Smu_list{t};       
         Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
-        if x==0
-            [cc, cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
-            reshape(mu,4,9)
-        end
         gradient =  cc*loss - (1/T_size)*Kmu_x;    % current gradient
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
-        
+        % save resutls
         Y_kappa(t,:) = Ymax;
         Y_kappa_val(t,:) = YmaxVal;
     end
@@ -627,7 +626,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
     return
 end
-function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent(x, kappa, iter)
+function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent(x, kappa)
     global loss_list;
     global loss;
     global Ye_list;
