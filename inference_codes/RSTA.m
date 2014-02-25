@@ -118,9 +118,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %for xi = randsample(1:m,ceil(m*0.8))
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
-                [delta_obj_list,kappa_decrease_flags(xi)] = par_condition_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
             else
-                [delta_obj_list,kappa_decrease_flags(xi)] = condition_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [delta_obj_list,kappa_decrease_flags(xi)] = conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
             end
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
@@ -156,7 +156,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Smu_list=Smu_list;
         end
         % update kappa
-        if sum(kappa_decrease_flags)<m*.8
+        if sum(kappa_decrease_flags)<=m*.8
             kappa = min(kappa*2,kappa_MAX);
         else
             kappa = max(ceil(kappa/2),kappa_MIN);
@@ -175,9 +175,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         Smu_list = best_Smu_list;
         for xi=1:m
             if PAR
-                [~,~] = par_condition_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [~,~] = par_conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
             else
-                [~,~] = condition_gradient_descent(xi,kappa,iter);    % optimize on single example
+                [~,~] = conditional_gradient_descent(xi,kappa,iter);    % optimize on single example
             end
             profile_update_tr;
             if profile.n_err_microlbl < best_n_err_microlbl
@@ -445,7 +445,7 @@ end
 %   x   --> the id of current training example
 %   obj --> current objective
 %   kappa --> current kappa
-function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, kappa, iter)
+function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, kappa, iter)
     global loss_list;
     global loss;
     global Ye_list;
@@ -627,7 +627,7 @@ function [delta_obj_list,kappa_decrease_flag] = condition_gradient_descent(x, ka
     
     return
 end
-function [delta_obj_list,kappa_decrease_flag] = par_condition_gradient_descent(x, kappa, iter)
+function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent(x, kappa, iter)
     global loss_list;
     global loss;
     global Ye_list;
@@ -924,7 +924,7 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d (%.1f) obj: %.2f gap: %.2f %%',...
+            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d (%.2f) obj: %.2f gap: %.2f %%',...
             round(tm-profile.start_time),...
             opt_round,...
             profile.n_err,...
@@ -1107,6 +1107,8 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
 %        end
 %         end
         [Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
+        clear P_node;
+        clear Q_node;
             
             
         
