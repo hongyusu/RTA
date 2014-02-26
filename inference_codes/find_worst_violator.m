@@ -1,13 +1,17 @@
+
+
 %% get the worst margin violator from T*kappa violators
-% Input: Y_kappa, Y_kappa_val
+% Input: 
+%       Y_kappa, Y_kappa_val
 % Output:
+%       Ymax, YmaxVal, break_flag
 function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
 %     if nargin == 3
 %         Y_ind_true = bin2dec(strrep(sprintf('%d ',(Y_true+1)/2),' ',''));
 %     else
 %         Y_ind_true = -1;
 %     end
-%tic
+
     % global variable
     l = size(Y_kappa,2)/size(Y_kappa_val,2);
     % local variable
@@ -17,18 +21,8 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
     for i=1:size(Y_kappa_val,1)
         for j = 1:size(Y_kappa_val,2)
             s = strrep(sprintf('%d ',Y_kappa(i,((j-1)*l+1):(j*l))),' ','');
-            try
             Y_kappa_ind(i,j) = bin2dec(s);
-            catch err
-                Y_kappa(i,((j-1)*l+1):(j*l))
-                s
-            end
         end
-    end
-    if sum(Y_kappa_ind(:,1)==Y_kappa_ind(:,2))> 0
-        Y_kappa_ind
-        Y_kappa_val
-        %reshape(Y_kappa,numel(Y_kappa)/10,10)
     end
     %
     break_flag=0;
@@ -80,8 +74,8 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator(Y_kappa,Y_kappa_val)
     i = ceil(mod(ind-1e-5, size(Y_kappa,1)));
     j = ceil((ind-1e-5) / size(Y_kappa,1));
     Ymax = Y_kappa(i,((j-1)*l+1):(j*l))*2-1;
-    YmaxInd = Y_kappa_ind(i,j);
+    %YmaxInd = Y_kappa_ind(i,j);
     YmaxVal = Y_kappa_val(i,j);
-%toc
+    
     return
 end
