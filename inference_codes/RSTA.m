@@ -301,7 +301,6 @@ function compute_duality_gap
     m=size(Kx_tr,1);
     Y=Y_tr;
     Ypred = zeros(size(Y));
-    YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
     
@@ -326,11 +325,13 @@ function compute_duality_gap
     
     %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
-        [Ypred(i,:),YpredVal(i,:),~] = ...
+        [Ypred(i,:),~,~] = ...
             find_worst_violator(...
             Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
     end
+    clear Y_kappa;
+    clear Y_kappa_val;
     
     %% duality gaps over trees
     dgap = zeros(1,T_size);
@@ -370,7 +371,6 @@ function par_compute_duality_gap
     m=size(Kx_tr,1);
     Y=Y_tr;
     Ypred = zeros(size(Y));
-    YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
     
@@ -399,13 +399,17 @@ function par_compute_duality_gap
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp{t};
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val{t};
     end
+    clear Y_tmp;
+    clear Y_tmp_val;
     
     %% get top '1' prediction by analyzing predictions from all trees
     parfor i=1:size(Y,1)
-        [Ypred(i,:),YpredVal(i,:),~] = ...
+        [Ypred(i,:),~,~] = ...
             find_worst_violator(Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
     end
+    clear Y_kappa;
+    clear Y_kappa_val;
     
     %% duality gaps over trees
     dgap = zeros(1,T_size);
