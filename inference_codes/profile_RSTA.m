@@ -2,7 +2,7 @@
 %%
 % running MMCRF on one dataset with random tree / random pair graph as
 % output graph structure connecting multiple output labels
-function run_RSTA(filename,graph_type,t,isTest)
+function profile_RSTA(filename,graph_type,t,isTest)
 
     %% tackle input parameters
     if nargin <1
@@ -22,6 +22,8 @@ function run_RSTA(filename,graph_type,t,isTest)
     rand('twister', 0);
     % suffix for write result files
     suffix=sprintf('%s_%s_%s_baselearner', filename,graph_type,t);
+    system(sprintf('rm /var/tmp/%s.log', suffix));
+    system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     %
     t=eval(t);
     isTest = eval(isTest);
@@ -114,7 +116,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     % generate random graph (guess 200 base learner should be enough)
     
     
-    Nrep=1;
+    Nrep=t;
     
     
     Nnode=size(Y,2);
@@ -185,15 +187,13 @@ function run_RSTA(filename,graph_type,t,isTest)
         Ypred(Itest,:)=Ypred_ts;
         %YpredVal(Itest,:)=Ypred_ts_val;
         running_times(k,1) = running_time;
+        break;
     end
 
-    
-    % auc & roc random model
-    [acc,vecacc,pre,rec,f1,auc1,auc2]=get_performance(Y,(Ypred==1),YpredVal);
-    perf = [acc,vecacc,pre,rec,f1,auc1,auc2]
+    system(sprintf('cp /var/tmp/%s.log ../outputs/%s.log', suffix));
     
     %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
-    save(sprintf('../outputs/%s.mat', paramsIn.filestem), 'perf','Ypred', 'YpredVal', 'running_times', 'muList');
+    
 
     if ~isTest
         exit

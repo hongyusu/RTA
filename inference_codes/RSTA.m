@@ -72,6 +72,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     end
 
     
+    profile_in_iteration = 0;
+    
     %% initialization
     optimizer_init;
     profile_init;
@@ -137,12 +139,14 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
 %             else
 %                 kappa = kappa *2;
 %             end
-            if PAR
-                par_compute_duality_gap;
-            else
-                compute_duality_gap;
+            if profile_in_iteration
+                if PAR
+                    par_compute_duality_gap;
+                else
+                    compute_duality_gap;
+                end
+                profile_update_tr;
             end
-            profile_update_tr;
         end
         %obj_list
         progress_made = (obj >= prev_obj);  
