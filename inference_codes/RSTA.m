@@ -137,6 +137,11 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
 %             else
 %                 kappa = kappa *2;
 %             end
+            if PAR
+                par_compute_duality_gap;
+            else
+                compute_duality_gap;
+            end
             profile_update_tr;
         end
         %obj_list
@@ -287,11 +292,11 @@ function compute_duality_gap
     global Y_tr;
     global params;
     global mu_list;
+    global ind_edge_val_list;
     global primal_ub;
     global obj;
     global kappa;
     global cc;
-    global ind_edge_val_list;
     
     m=size(Kx_tr,1);
     Y=Y_tr;
@@ -300,35 +305,33 @@ function compute_duality_gap
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
     
-    
-    %% kappa best label
+    %% get 'k' best prediction from each spanning tree
+    Kmu_list_local = cell(1,T_size);
+    gradient_list_local = cell(1,T_size);
     for t=1:T_size
         loss = loss_list{t};
         E = E_list{t};
         mu = mu_list{t};
         ind_edge_val = ind_edge_val_list{t};
         loss = reshape(loss,4,size(E,1)*m);
-        
-        Kmu = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
-
-        Kmu = reshape(Kmu,4,size(E,1)*m);
-        
-        gradient = cc*loss - (1/T_size)*Kmu;
+        Kmu_list_local{t} = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
+        Kmu_list_local{t} = reshape(Kmu_list_local{t},4,size(E,1)*m);
+        Kmu = Kmu_list_local{t};
+        gradient_list_local{t} = cc*loss - (1/T_size)*Kmu;
+        gradient = gradient_list_local{t};
         [Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
-        
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
     end
     
-    
-    %% one single best label
+    %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
         [Ypred(i,:),YpredVal(i,:),~] = ...
-            find_worst_violator(Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
+            find_worst_violator(...
+            Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
     end
     
-
     %% duality gaps over trees
     dgap = zeros(1,T_size);
     for t=1:T_size
@@ -336,18 +339,16 @@ function compute_duality_gap
         E = E_list{t};
         mu = mu_list{t};
         ind_edge_val = ind_edge_val_list{t};
+        Kmu = Kmu_list_local{t};
+        gradient = gradient_list_local{t};
         
-        loss = reshape(loss,4,size(E,1)*m);
-        Kmu = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
-        Kmu = reshape(Kmu,4,size(E,1)*m);
-        gradient = cc*loss - (1/T_size)*Kmu;
         Gmax = compute_Gmax(gradient,Ypred,E);
         mu = reshape(mu,4,m*size(E,1));
         duality_gap = params.C*max(Gmax,0) - sum(reshape(sum(gradient.*mu),size(E,1),m),1)';
         dgap(t) = sum(duality_gap);
     end
     %% primal upper bound
-    primal_ub = obj + mean(dgap(t));
+    primal_ub = obj + sum(dgap(t));
     
     return;
 end
@@ -360,7 +361,6 @@ function par_compute_duality_gap
     global Y_tr;
     global params;
     global mu_list;
-    global Ye_list;
     global ind_edge_val_list;
     global primal_ub;
     global obj;
@@ -375,10 +375,7 @@ function par_compute_duality_gap
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
     
     nlabel = size(Y_tr,2);
-    
- 
-    
-    
+
     %% get 'k' best prediction from each spanning tree
     Y_tmp = cell(1,T_size);
     Y_tmp_val = cell(1,T_size);
@@ -390,28 +387,18 @@ function par_compute_duality_gap
         mu = mu_list{t};
         E = E_list{t};
         ind_edge_val = ind_edge_val_list{t};
-        
-        node_degree = zeros(1,nlabel);
-        for i=1:nlabel
-            node_degree(i) = sum(sum(E==i));
-        end
-    
-        
         loss = reshape(loss,4,size(E,1)*m);        
         Kmu_list_local{t} = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
         Kmu_list_local{t} = reshape(Kmu_list_local{t},4,size(E,1)*m);
         Kmu = Kmu_list_local{t};
         gradient_list_local{t} = cc*loss - (1/T_size)*Kmu;
         gradient = gradient_list_local{t};
-        %[Y_tmp{t},Y_tmp_val{t}] = compute_topk(gradient,kappa,E);
         [Y_tmp{t},Y_tmp_val{t}] = compute_topk(gradient,kappa,E);
-        
     end
     for t=1:T_size
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp{t};
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val{t};
     end
-    
     
     %% get top '1' prediction by analyzing predictions from all trees
     parfor i=1:size(Y,1)
@@ -420,7 +407,6 @@ function par_compute_duality_gap
             Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
     end
     
-
     %% duality gaps over trees
     dgap = zeros(1,T_size);
     parfor t=1:T_size
@@ -429,7 +415,6 @@ function par_compute_duality_gap
         E = E_list{t};
         mu = mu_list{t};
         ind_edge_val = ind_edge_val_list{t};
-        
         Kmu = Kmu_list_local{t};
         gradient = gradient_list_local{t};
         
@@ -439,7 +424,7 @@ function par_compute_duality_gap
         dgap(t) = sum(duality_gap);
     end
     %% primal upper bound
-    primal_ub = obj + mean(dgap(t));
+    primal_ub = obj + sum(dgap(t));
     
     return;
 end
@@ -872,7 +857,7 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         print_message(...
-            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d (%.2f) obj: %.2f gap: %.2f %%',...
+            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d (%3.2f) obj: %.2f gap: %.2f %%',...
             round(tm-profile.start_time),...
             opt_round,...
             profile.n_err,...
@@ -880,7 +865,7 @@ function profile_update_tr
             profile.n_err_microlbl,...
             profile.p_err_microlbl*100,...
             kappa,...
-            sum(kappa_decrease_flags)/size(Y_tr,1),...
+            sum(kappa_decrease_flags)/size(Y_tr,1)*100,...
             obj,...
             (primal_ub-obj)/obj*100),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
