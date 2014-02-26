@@ -321,7 +321,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
         }
         
         for(mint ii=0; ii<M_nrow*M_nrow; ii++)
-        {tmp_M_long[ii].i=NULL;}
+        {free(tmp_M_long[ii].i);}
         free(tmp_M_long);
     }
     /* for(mint jj=0;jj<M_nrow;jj++){printf("tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);} */
@@ -347,7 +347,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
     
     /* destroy */
     for(mint ii=0; ii<M_nrow; ii++)
-    {tmp_M[ii].i=NULL;}
+    {free(tmp_M[ii].i);}
     free(tmp_M);
 
     /*  return results */

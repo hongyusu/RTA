@@ -24,6 +24,7 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator_matlab(Y_kappa,Y_kappa
             Y_kappa_ind(i,j) = bin2dec(s);
         end
     end
+    Y_kappa_ind
     %
     break_flag=0;
     for i=1:size(Y_kappa_val,2)
