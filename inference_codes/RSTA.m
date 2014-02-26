@@ -325,7 +325,7 @@ function compute_duality_gap
     %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
         [Ypred(i,:),~,~] = ...
-            find_worst_violator(...
+            find_worst_violator_matlab(...
             Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
     end
@@ -404,7 +404,7 @@ function par_compute_duality_gap
     %% get top '1' prediction by analyzing predictions from all trees
     parfor i=1:size(Y,1)
         [Ypred(i,:),~,~] = ...
-            find_worst_violator(Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
+            find_worst_violator_matlab(Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
     end
     clear Y_kappa;
@@ -491,7 +491,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
-    [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
+    [Ymax, ~, kappa_decrease_flag] = find_worst_violator_matlab(Y_kappa,Y_kappa_val);
     
 
     %% if the worst violator is the correct label, exit without update mu
@@ -640,7 +640,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
-    [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
+    [Ymax, ~, kappa_decrease_flag] = find_worst_violator_matlab(Y_kappa,Y_kappa_val);
 
 
     %% if the worst violator is the correct label, exit without update mu
@@ -900,7 +900,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     %% compute top '1' for all tree
     for i=1:size(Y,1)
         [Ypred(i,:),YpredVal(i,:),~] = ...
-            find_worst_violator(...
+            find_worst_violator_matlab(...
             Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
     end
@@ -944,7 +944,7 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
     end
     parfor i=1:size(Y,1)
         pause(0.000);
-        [Ypred(i,:),YpredVal(i,:)] = find_worst_violator(input_labels{i},input_scores{i});
+        [Ypred(i,:),YpredVal(i,:)] = find_worst_violator_matlab(input_labels{i},input_scores{i});
     end
     
     return;
