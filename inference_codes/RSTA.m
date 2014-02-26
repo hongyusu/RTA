@@ -137,7 +137,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
 %             else
 %                 kappa = kappa *2;
 %             end
-%             profile_update_tr;
+            profile_update_tr;
         end
         %obj_list
         progress_made = (obj >= prev_obj);  
@@ -245,7 +245,7 @@ function Kmu = compute_Kmu(Kx,mu,E,ind_edge_val)
         end
     end
     %mu = reshape(mu,mu_siz);
-    return
+    return;
 end
 
 
@@ -349,7 +349,7 @@ function compute_duality_gap
     %% primal upper bound
     primal_ub = obj + mean(dgap(t));
     
-    return
+    return;
 end
 function par_compute_duality_gap
     %% parameter
@@ -441,7 +441,7 @@ function par_compute_duality_gap
     %% primal upper bound
     primal_ub = obj + mean(dgap(t));
     
-    return
+    return;
 end
 
 
@@ -473,10 +473,13 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global T_size;
     global params;
     
-    %% collect top-K prediction from each tree
-    print_message(sprintf('Collect top-k prediction from each tree T-size %d', T_size),3)
     Y_kappa = zeros(T_size,kappa*l);        % label prediction
     Y_kappa_val = zeros(T_size,kappa);      % score
+    gradient_list_local = cell(1,T_size);
+    Kmu_x_list_local = cell(1,T_size);
+    
+    %% collect top-K prediction from each tree
+    print_message(sprintf('Collect top-k prediction from each tree T-size %d', T_size),3)
     for t=1:T_size
         % variables located for tree t and example x
         loss = loss_list{t}(:,x);
@@ -485,9 +488,12 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu = mu_list{t}(:,x);
         E = E_list{t};
         Rmu = Rmu_list{t};
-        Smu = Smu_list{t};       
-        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
-        gradient =  cc*loss - (1/T_size)*Kmu_x;    % current gradient
+        Smu = Smu_list{t};    
+        % compute the quantity for tree t
+        Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
+        Kmu_x = Kmu_x_list_local{t};
+        gradient_list_local{t} =  cc*loss - (1/T_size)*Kmu_x;    % current gradient    
+        gradient = gradient_list_local{t};
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
         % save resutls
@@ -495,7 +501,6 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Y_kappa_val(t,:) = YmaxVal;
     end
     
-
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
@@ -504,14 +509,13 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);
-        kappa_decrease_flag=1;
-        return
+        %kappa_decrease_flag=1;
+        return;
     end
     
     
     %% otherwise line serach
     mu_d_list = mu_list;
-    print_message(sprintf('Line search'),3)
     nomi=zeros(1,T_size);
     denomi=zeros(1,T_size);
     kxx_mu_0 = cell(1,T_size);
@@ -529,8 +533,8 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Smu = Smu_list{t};
 
         %% compute
-        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
-        gradient =  cc*loss - (1/T_size)*Kmu_x;
+        Kmu_x = Kmu_x_list_local{t};
+        gradient = gradient_list_local{t};
         Gmax(t) = compute_Gmax(gradient,Ymax,E);            % objective under best labeling
         G0(t) = -mu'*gradient;                               % current objective
         
@@ -553,11 +557,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 
         mu_d = mu_0 - mu;
         Kmu_d = Kmu_0-Kmu_x;
-        
-%         if x==1
-%             [sum(sum(Kmu_d)),sum(sum(gradient)),sum(sum(loss))]
-%         end
-%         
+              
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
@@ -566,27 +566,14 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     end
     
     % decide whether to update or not
-    %if sum(Gmax>=G0) == numel(G0)
     if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size *1
         tau = min(sum(nomi)/sum(denomi),1);
     else
         tau=0;
     end
-    
-    if x==0
-        disp('--->')
-        [x,sum(Gmax),sum(G0),sum(Gmax>G0),tau]
-        [Gmax;G0]
-        nomi./denomi
-    end
-    
-
 
     %% update for each tree
-	%obj_list = zeros(1,T_size);
     delta_obj_list = zeros(1,T_size);
-    %cur_obj_list = zeros(1,T_size);
-    print_message(sprintf('Update for trees with Gmax %.2f G0 %.2f tao %.2f',Gmax,G0,tau),3)
     for t=1:T_size
         % variables located for tree t and example x
         loss = loss_list{t}(:,x);
@@ -594,24 +581,15 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         ind_edge_val = ind_edge_val_list{t};
         mu = mu_list{t}(:,x);
         E = E_list{t};
-        Rmu = Rmu_list{t};
-        Smu = Smu_list{t};       
-        Kmu_x = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
-        
-        
-        gradient =  cc*loss - (1/T_size)*Kmu_x;
-        
+        gradient =  gradient_list_local{t};
         mu_d = mu_d_list{t};
         Kmu_d = Kmu_d_list{t};
+        %
         delta_obj_list(t) = gradient'*mu_d*tau - (1/T_size)*tau^2/2*mu_d'*Kmu_d;
-        
-        
         mu = mu + tau*mu_d;
         Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
         % update Smu Rmu
         mu = reshape(mu,4,size(E,1));
-
-        
         for u = 1:4
             Smu_list{t}{u}(:,x) = (sum(mu)').*ind_edge_val{u}(:,x);
             Rmu_list{t}{u}(:,x) = mu(u,:)';
@@ -621,7 +599,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu_list{t}(:,x) = mu;
     end
     
-    return
+    return;
 end
 function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent(x, kappa)
     global loss_list;
@@ -660,20 +638,18 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         E = E_list{t};
         Rmu = Rmu_list{t};
         Smu = Smu_list{t};
-        
         % compute the quantity for tree t
         Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         Kmu_x = Kmu_x_list_local{t};
-        %[cc*loss'*mu, (1/T_size)*Kmu_x'*mu]
         gradient_list_local{t} =  cc*loss - (1/T_size)*Kmu_x;    % current gradient    
         gradient = gradient_list_local{t};
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
+        % save result
         Y_kappa(t,:) = Ymax;
         Y_kappa_val(t,:) = YmaxVal;
     end
     
-
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
@@ -682,14 +658,13 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);
-        kappa_decrease_flag=1;
+        %kappa_decrease_flag=1;
         return;
     end
 
     
 %% otherwise line serach
     mu_d_list = mu_list;
-    print_message(sprintf('Line search'),3)
     nomi=zeros(1,T_size);
     denomi=zeros(1,T_size);
     kxx_mu_0 = cell(1,T_size);
@@ -698,7 +673,6 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     Kmu_d_list = cell(1,T_size);
     parfor t=1:T_size
         pause(0.000);
-
         % variables located for tree t and example x
         loss = loss_list{t}(:,x);
         Ye = Ye_list{t}(:,x);
@@ -735,7 +709,6 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         mu_d = mu_0 - mu;
         Kmu_d = Kmu_0-Kmu_x;
         
-        
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
@@ -752,12 +725,8 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         tau=0;
     end
     
-
     %% update for each tree
-	%obj_list = zeros(1,T_size);
     delta_obj_list = zeros(1,T_size);
-    %cur_obj_list = zeros(1,T_size);
-    print_message(sprintf('Update for trees with Gmax %.2f G0 %.2f tao %.2f',Gmax,G0,tau),3)
     parfor t=1:T_size
         % variables located for tree t and example x
         loss = loss_list{t}(:,x);
@@ -765,17 +734,15 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         ind_edge_val = ind_edge_val_list{t};
         mu = mu_list{t}(:,x);
         E = E_list{t};
-
         gradient =  gradient_list_local{t};
         mu_d = mu_d_list{t};
         Kmu_d = Kmu_d_list{t};
+        % 
         delta_obj_list(t) = gradient'*mu_d*tau - (1/T_size)*tau^2/2*mu_d'*Kmu_d;
-        
         mu = mu + tau*mu_d;
         Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
         % update Smu Rmu
         mu = reshape(mu,4,size(E,1));
-        
         for u = 1:4
             Smu_list{t}{u}(:,x) = (sum(mu)').*ind_edge_val{u}(:,x);
             Rmu_list{t}{u}(:,x) = mu(u,:)';
@@ -785,7 +752,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         mu_list{t}(:,x) = mu;
     end
      
-    return
+    return;
 end
 
 
@@ -801,6 +768,8 @@ function [Gmax] = compute_Gmax(gradient,Ymax,E)
     % sum up the corresponding edge-gradients
     Gmax = reshape(sum(gradient.*Umax),size(E,1),m);
     Gmax = reshape(sum(Gmax,1),m,1);
+    
+    return;
 end
 
 
@@ -864,7 +833,6 @@ function profile_update
             profile.p_err_ts*100,sum(profile.microlabel_errors_ts),...
             sum(profile.microlabel_errors_ts)/numel(Y_ts)*100),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
-        %print_message(sprintf('%d here',profile.microlabel_errors_ts),4);
 
         running_time = tm-profile.start_time;
         sfile = sprintf('/var/tmp/Ypred_%s.mat',params.filestem);
@@ -926,13 +894,12 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     global E_list;
     global Ye_list;
     global mu_list;
-    global E;
     global kappa;
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
-    % compute K best
+    %% compute 'k' best from each random spanning tree
     for t=1:T_size
         E = E_list{t};
         Ye = Ye_list{t};
@@ -942,13 +909,15 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
     end
-    % compute top 1
+    %% compute top '1' for all tree
     for i=1:size(Y,1)
         [Ypred(i,:),YpredVal(i,:),~] = ...
-            find_worst_violator(Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
+            find_worst_violator(...
+            Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
             Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
     end
-    return
+    
+    return;
 end
 function [Ypred,YpredVal] = par_compute_error(Y,Kx) 
     %% global variable
@@ -956,7 +925,6 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
     global E_list;
     global Ye_list;
     global mu_list;
-    global E;
     global kappa;
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
@@ -977,6 +945,8 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp{t};
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val{t};
     end
+    clear Y_tmp;
+    clear Y_tmp_val;
     %% compute top '1' for all tree
     input_labels = cell(1,size(Y,1));
     input_scores = cell(1,size(Y,1));
@@ -989,16 +959,14 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
         [Ypred(i,:),YpredVal(i,:)] = find_worst_violator(input_labels{i},input_scores{i});
     end
     
-    return
+    return;
 end
 
 %% for testing
 % Input: test kernel, tree index
 % Output: gradient
 function w_phi_e = compute_w_phi_e(Kx,E,Ye,mu)
-
     m = numel(mu)/size(E,1)/4;
-    
     Ye = reshape(Ye,4,size(E,1)*m);   
     mu = reshape(mu,4,size(E,1)*m);
     m_oup = size(Kx,2);
@@ -1015,12 +983,9 @@ function w_phi_e = compute_w_phi_e(Kx,E,Ye,mu)
         w_phi_e = w_phi_e*Kx;
         w_phi_e = reshape(w_phi_e,4,size(E,1)*m_oup);
     end
+    
+    return;
 end
-
-
-
-
-
 
 %% compute loss vector
 function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
@@ -1048,15 +1013,15 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         end
     end    
     loss = reshape(loss,4*size(E,1),m);
-    
-   
+      
     Ye = reshape(loss==0,4,size(E,1)*m);
     for u = 1:4
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
     loss = loss*0+1;
-    return
+    
+    return;
 end
 
 %% initialize profile
