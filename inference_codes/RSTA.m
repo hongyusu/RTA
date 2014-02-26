@@ -30,7 +30,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global PAR;     % parallel compuing on matlab with matlabpool
     global kappa_decrease_flags;  
     
-    if T_size > 20
+    if T_size >= 20
         PAR=1;
     else
         PAR =0;
