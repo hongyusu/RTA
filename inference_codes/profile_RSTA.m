@@ -16,12 +16,12 @@ function profile_RSTA(filename,graph_type,t,isTest)
         t = '1';
     end
     if nargin < 4
-        isTest = '1';
+        isTest = '0';
     end
     % set random number seed
     rand('twister', 0);
     % suffix for write result files
-    suffix=sprintf('%s_%s_%s_baselearner', filename,graph_type,t);
+    suffix=sprintf('%s_%s_%s_RSTA', filename,graph_type,t);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     %

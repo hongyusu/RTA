@@ -72,7 +72,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     end
 
     
-    profile_in_iteration = 0;
+    profile_in_iteration = 1;
     
     %% initialization
     optimizer_init;
@@ -134,12 +134,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
             
-%             if kappa_decrease_flags(xi)
-%                 kappa = max(kappa/2,2);
-%             else
-%                 kappa = kappa *2;
-%             end
-            if profile_in_iteration
+            if profile_in_iteration && mod(xi,10)==1
                 if PAR
                     par_compute_duality_gap;
                 else

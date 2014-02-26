@@ -16,7 +16,7 @@ function run_RSTA(filename,graph_type,t,isTest)
         t = '1';
     end
     if nargin < 4
-        isTest = '1';
+        isTest = '0';
     end
     % set random number seed
     rand('twister', 0);
