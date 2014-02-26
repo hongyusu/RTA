@@ -60,6 +60,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
+    %cc  = 1/T_size/size(E_list{1},1);
     cc  = 1/T_size;
     mu_list = cell(T_size);
     
@@ -599,6 +600,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         
         
         gradient =  cc*loss - (1/T_size)*Kmu_x;
+        
         mu_d = mu_d_list{t};
         Kmu_d = Kmu_d_list{t};
         delta_obj_list(t) = gradient'*mu_d*tau - (1/T_size)*tau^2/2*mu_d'*Kmu_d;
@@ -618,11 +620,6 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
     end
-    
-    if x==0
-            delta_obj_list
-    end
-    
     
     return
 end
@@ -652,9 +649,6 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     gradient_list_local = cell(1,T_size);
     Kmu_x_list_local = cell(1,T_size);
 
-% mytime=[];
-% mytime = [cputime];
-
     %% collect top-K prediction from each tree
     print_message(sprintf('Collect top-k prediction from each tree T-size %d', T_size),3)
     parfor t=1:T_size
@@ -679,7 +673,6 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         Y_kappa_val(t,:) = YmaxVal;
     end
     
-% mytime = [mytime,cputime];
 
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
@@ -692,7 +685,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         kappa_decrease_flag=1;
         return;
     end
-% mytime = [mytime,cputime];
+
     
 %% otherwise line serach
     mu_d_list = mu_list;
@@ -753,17 +746,11 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     
     
     % decide whether to update or not
-    %if sum(Gmax>=G0) == numel(G0)
     if sum(Gmax)>=sum(G0) %&& sum(Gmax>G0)>T_size/2
         tau = min(sum(nomi)/sum(denomi),1);
-        %tau = params.ssc/(params.ssc+iter);
-        %tau_list = min(nomi./denomi,1);
     else
         tau=0;
-        %tau_list = nomi*0;
     end
-    
-%     mytime = [mytime,cputime];
     
 
     %% update for each tree
@@ -784,12 +771,10 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         Kmu_d = Kmu_d_list{t};
         delta_obj_list(t) = gradient'*mu_d*tau - (1/T_size)*tau^2/2*mu_d'*Kmu_d;
         
-        
         mu = mu + tau*mu_d;
         Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
         % update Smu Rmu
         mu = reshape(mu,4,size(E,1));
-
         
         for u = 1:4
             Smu_list{t}{u}(:,x) = (sum(mu)').*ind_edge_val{u}(:,x);
@@ -799,11 +784,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
     end
-    
-% mytime = [mytime,cputime];
-% mytime(2:4)-mytime(1:3)
-
-    
+     
     return
 end
 
