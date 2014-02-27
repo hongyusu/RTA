@@ -36,17 +36,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         PAR =0;
     end
     
-    if T_size == 1
-        kappa_MIN = 2;
-        kappa_INIT=2;
-    else
-        kappa_INIT = 8;
-        kappa_MIN = 4; 
-    end
-    kappa_MAX = 64;
-    
-    kappa=kappa_INIT;
-
     params=paramsIn;
     Kx_tr=dataIn.Kx_tr;
     Kx_ts=dataIn.Kx_ts;
@@ -63,6 +52,17 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     %cc  = 1/T_size/size(E_list{1},1);
     cc  = 1/T_size;
     mu_list = cell(T_size);
+    
+    if T_size == 1
+        kappa_MIN = 2;
+        kappa_INIT=2;
+    else
+        kappa_INIT = 8;
+        kappa_MIN = 4; 
+    end
+    kappa_MAX = 64;
+    
+    kappa=kappa_INIT;
     
     
     for t=1:T_size
