@@ -492,10 +492,8 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator_matlab(Y_kappa,Y_kappa_val);
-    [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
     
-    asdfsf
-
+    
     %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);

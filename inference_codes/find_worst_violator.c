@@ -28,7 +28,6 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     double * Y_kappa;
     double * Y_kappa_val;
     double * Ymax;
-    double YmaxVal;
     double break_flag=0;
     
     mint Y_kappa_nrow;
@@ -46,17 +45,21 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     Y_kappa_val_ncol = mxGetN(IN_Y_kappa_val);
     nlabel=Y_kappa_ncol/Y_kappa_val_ncol;
     /* OUTPUT VARIABLES */
-    OUT_Ymax = mxCreateDoubleMatrix(1, nlabel,mxREAL);
-    OUT_YmaxVal = mxCreateDoubleScalar(YmaxVal);
-    OUT_break_flag = mxCreateDoubleScalar(break_flag);
-    
-    double * Y_kappa_ind = (double *) malloc(Y_kappa_val_nrow*Y_kappa_val_ncol);
+    OUT_Ymax = mxCreateDoubleMatrix(1,nlabel,mxREAL);
+    OUT_YmaxVal = mxCreateDoubleScalar(1);
+    OUT_break_flag = mxCreateDoubleScalar(1);
+    Ymax = mxGetPr(OUT_Ymax);
+
+    mxArray * mat_Y_kappa_ind;
+    double *Y_kappa_ind;
+    mat_Y_kappa_ind = mxCreateDoubleMatrix(Y_kappa_val_nrow, Y_kappa_val_ncol,mxREAL);
+    Y_kappa_ind = mxGetPr(mat_Y_kappa_ind);
     /* ASSIGN DECIMAL TO EACH BINARY MULTILABEL */
     for(mint ii=0;ii<Y_kappa_nrow;ii++)
     {
         for(mint jj=0;jj<Y_kappa_val_ncol;jj++)
         {
-            /*printf("%d %d %d\n",ii,jj,nlabel);*/
+            /* printf("%d %d %d\n",ii,jj,nlabel); */
             Y_kappa_ind[ii+jj*Y_kappa_nrow] = 0;
             for(mint kk=0;kk<nlabel;kk++)
             {
@@ -67,19 +70,18 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     }
     
     /* printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol); */
+    /* printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol); */
     
     /* LOOP THROUGHT KAPPA*/
-    type_element_list element_list;
-    element_list.score=-1;
-    element_list.next_element = NULL;
-    type_element_list * my_list;
-    type_element_list * cur_pos;
+    struct type_element_list * my_list;
+    struct type_element_list * cur_pos;
     my_list=NULL;
-    //my_list = (type_element_list *) malloc (sizeof(element_list));
-    //my_list->score = -1;
-    //my_list->next_element = NULL;
+    cur_pos=NULL;
+    double max_val = -1;
+    double max_ind = -1;
+    mint max_row;
+    mint max_col;
 
-    
     for(mint ii=0;ii<Y_kappa_val_ncol;ii++)
     {
         double theta=0;
@@ -89,22 +91,76 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         /* UPATE SCORE */
         for(mint jj=0;jj<Y_kappa_val_nrow;jj++)
         {
-            cur_pos = my_list;
-            while(cur_pos!=NULL)
+            /* THE EMPTY LIST, BEGINNING STAGE */
+            if(!my_list)
             {
-                
+                my_list = ( struct type_element_list * ) malloc (sizeof(struct type_element_list));
+				my_list->id = Y_kappa_ind[jj+ii*Y_kappa_val_nrow];
+				my_list->val = 0;
+				my_list->next = NULL;
+                /* printf("-->init %.2f %.2f\n", my_list->id, my_list->val); */
             }
-            continue;
+            cur_pos = my_list;
+			/* LOOP THE LIST AND UPDATE ELEMENT */
+            /* printf("-->on %d %d %.2f %.2f\n",jj,ii,Y_kappa_ind[jj+ii*Y_kappa_val_nrow],Y_kappa_val[jj+ii*Y_kappa_val_nrow]); */
+            mint find_flag=0;
+			while(1)
+			{
+				if(cur_pos->id == Y_kappa_ind[jj+ii*Y_kappa_val_nrow])
+				{
+					cur_pos->val = cur_pos->val + Y_kappa_val[jj+ii*Y_kappa_val_nrow];
+                    find_flag=1;
+                    /* printf("-->update %.2f %.2f\n", cur_pos->id, cur_pos->val); */
+					break;
+				}
+                if(cur_pos->next)
+                {cur_pos = cur_pos->next;}
+                else
+                {break;}
+			}
+			/* CURRENT ELEMENT IS NOT FOUND IN THE LIST */
+			if(!find_flag)
+			{
+				cur_pos->next = ( struct type_element_list * ) malloc (sizeof(struct type_element_list));
+                cur_pos = cur_pos->next;
+				cur_pos->id = Y_kappa_ind[jj+ii*Y_kappa_val_nrow];
+				cur_pos->val = Y_kappa_val[jj+ii*Y_kappa_val_nrow];
+				cur_pos->next = NULL;
+                /* printf("-->add %.2f %.2f\n", cur_pos->id, cur_pos->val); */
+			}
+            /* ACCESS UPDATED VALUE */
+            if(max_val<cur_pos->val)
+            {
+                max_val = cur_pos->val;
+                max_ind = cur_pos->id;
+                max_row = jj;
+                max_col = ii;
+            }
+            /* printf("-----------%d %d %d %d %.2f %.2f %.2f\n\n", jj,ii,max_row,max_col,max_ind,max_val,theta); */
+		}
+        if(max_val >= theta)
+        {
+            break_flag = 1;
+            break;
         }
-
     }
-    
-    
-    
-    // destroy my_list;
-    free(Y_kappa_ind);
-    
-   
+    /* DESTROY TEMPORATORY POINTER SPACE */
+    while(my_list)
+    {
+        cur_pos = my_list;
+        my_list = my_list->next;
+        free(cur_pos);
+    }  
+    mxDestroyArray(mat_Y_kappa_ind);
+    /* COLLECT RESULTS */
+    *(mxGetPr(OUT_YmaxVal)) = max_val;
+    *(mxGetPr(OUT_break_flag)) = break_flag;
+    for(mint ii=0;ii<nlabel;ii++)
+    {
+        /* printf("%d %d %d %d\n",max_row,max_col,max_row,(max_col*nlabel+ii)*Y_kappa_nrow); */
+        Ymax[ii] = Y_kappa[max_row+(max_col*nlabel+ii)*Y_kappa_nrow];
+    }
+    /* printf("%d %d %.2f %.2f\n", max_row, max_col,max_ind,max_val); */
 }
 
 

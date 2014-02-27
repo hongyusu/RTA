@@ -24,7 +24,8 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator_matlab(Y_kappa,Y_kappa
             Y_kappa_ind(i,j) = bin2dec(s);
         end
     end
-    Y_kappa_ind
+    %Y_kappa_ind
+    %Y_kappa_val
     %
     break_flag=0;
     for i=1:size(Y_kappa_val,2)
@@ -75,7 +76,7 @@ function [Ymax, YmaxVal,break_flag] = find_worst_violator_matlab(Y_kappa,Y_kappa
     i = ceil(mod(ind-1e-5, size(Y_kappa,1)));
     j = ceil((ind-1e-5) / size(Y_kappa,1));
     Ymax = Y_kappa(i,((j-1)*l+1):(j*l))*2-1;
-    %YmaxInd = Y_kappa_ind(i,j);
+    %YmaxInd = Y_kappa_ind(i,j)
     YmaxVal = Y_kappa_val(i,j);
     
     return
