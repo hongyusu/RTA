@@ -102,4 +102,6 @@ function [Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, 
     end
     node_degree(E(1,1)) = node_degree(E(1,1))-1;
 
+    return
 end
+

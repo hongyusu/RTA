@@ -23,8 +23,8 @@ def singleRSTA(filename,graph_type,t,node):
   pass
 
 def run():
-  #cluster = get_free_nodes()[0]
-  cluster = ['dave']
+  cluster = get_free_nodes()[0]
+  #cluster = ['dave']
   jobs=[]
   n=0
   is_main_run=0
@@ -34,7 +34,9 @@ def run():
   n=0
   for filename in filenames:
     for graph_type in ['tree']:
-      for t in [1,20,40,60,80,100]:
+      for t in range(0,55,5):
+        if t==0:
+          t=1
         para_t="%d" % (t)
         node=cluster[n%len(cluster)]
         n+=1
