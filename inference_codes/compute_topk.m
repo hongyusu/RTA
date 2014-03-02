@@ -65,7 +65,10 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
 %          afdsdf
 %        end
 %         end
+
         [Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
+        %[Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree);
+        %asfsdf
         clear P_node;
         clear Q_node;
             
