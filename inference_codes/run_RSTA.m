@@ -21,7 +21,9 @@ function run_RSTA(filename,graph_type,t,isTest)
     % set random number seed
     rand('twister', 0);
     % suffix for write result files
-    suffix=sprintf('%s_%s_%s_baselearner', filename,graph_type,t);
+    suffix=sprintf('%s_%s_%s_RSTAr', filename,graph_type,t);
+    system(sprintf('rm /var/tmp/%s.log', suffix));
+    system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     %
     t=eval(t);
     isTest = eval(isTest);
@@ -114,7 +116,7 @@ function run_RSTA(filename,graph_type,t,isTest)
     % generate random graph (guess 200 base learner should be enough)
     
     
-    Nrep=1;
+    Nrep=t;
     
     
     Nnode=size(Y,2);

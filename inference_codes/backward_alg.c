@@ -74,7 +74,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             }
         }
         qsort(tmp_M, 2*K, sizeof(t_v2i), (void *)compare_structs);
-        /* PICKING FLAG = -100 */
+        /* PICKING WILL BE FLAGED*/
         Q_node[(tmp_M[kk].nrow+par*K) + tmp_M[kk].ncol*K*nlabel]=PICK;
         YmaxVal_single[kk] = tmp_M[kk].v;
         free(tmp_M);

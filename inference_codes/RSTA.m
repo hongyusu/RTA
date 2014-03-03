@@ -134,7 +134,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
             
-            if profile_in_iteration && mod(xi,100)==1
+            if profile_in_iteration && mod(xi,400)==1 && 1==0
                 if PAR
                     par_compute_duality_gap;
                 else
