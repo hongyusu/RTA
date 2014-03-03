@@ -55,7 +55,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     if T_size == 1
         kappa_MIN = 2;
-        kappa_INIT=2;
+        kappa_INIT=4;
     else
         kappa_INIT = 8;
         kappa_MIN = 4; 

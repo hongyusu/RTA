@@ -32,7 +32,16 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
         %[P_node1,T_node1] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
-        [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+        %[P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+        [P_node,T_node] = copy_forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+%         if sum(sum(P_node==P_node1))~=size(T_node,1)*size(T_node,2)
+%             a=((P_node==P_node1)*2-1)
+%             P_node.*a
+%             P_node1.*a
+%             T_node.*a
+%             T_node1.*a
+%             fadf
+%         end
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
 

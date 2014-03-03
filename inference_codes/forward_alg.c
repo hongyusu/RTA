@@ -216,120 +216,165 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
 {
-    /* printf("******\n"); */
-    /*  input */
+    /* INPUT */
+    double * M = mxGetPr(M_array);
     mint M_nrow = mxGetM(M_array);
     mint M_ncol = mxGetN(M_array);
-    /* printf("%d %d\n", M_nrow, M_ncol); */
-    /* printf("current node degree:%d\tM_nrow:%d\tM_ncol:%d\n",current_node_degree,M_nrow,M_ncol); */
-    double * M = mxGetPr(M_array);
-    /* output */
+    /* OUTPUT */
     mxArray * res_array;
     res_array = mxCreateDoubleMatrix(M_nrow,M_ncol+1,mxREAL);
     double * res = mxGetPr(res_array);
-
-    /*no child*/
+    /* NO CHILDREN */
     if(current_node_degree-1==0)
     {
         res[0+M_ncol*M_nrow]=1;
-        /* printf("--%d %d \n",mxGetM(res_array),mxGetN(res_array)); */
-        /* printm(res,M_nrow,M_ncol+1); */
         return res;
     }
     
-    /* printf("M\n");printm(M,M_nrow,M_ncol); */
+    //printf("M\n");printm(M,M_nrow,M_ncol); 
     
-    /*  initialization */
+    /*  INITIALIZE TMP_M WITH FIRST COLUMN OF M */
     t_v2is * tmp_M;
     tmp_M = (struct v2is *) malloc((sizeof(t_v2is))*M_nrow);
     for(mint ii=0;ii<M_nrow;ii++)
     {
+        tmp_M[ii].v=0;
+        tmp_M[ii].i=(mint *)malloc(sizeof(mint)*(current_node_degree-1));
+        tmp_M[ii].i[0]=0;
         if(M[ii]>0)
         {
             tmp_M[ii].v=M[ii];
-            tmp_M[ii].i=(mint *)malloc(sizeof(mint)*(current_node_degree-1));
             tmp_M[ii].i[0]=ii+1;
         }
-        else
-        {
-            tmp_M[ii].v=0;
-            tmp_M[ii].i=(mint *)malloc(sizeof(mint)*(current_node_degree-1));
-            tmp_M[ii].i[0]=0;
-        }
     }
-    /* for(mint jj=0;jj<M_nrow;jj++){printf("tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);} */
-    /*  two column at a time */
+    
+    //for(mint jj=0;jj<M_nrow;jj++){printf("INIT tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);} 
+    
+    /*  PROCESSING FROM 2nd COLUMN */
     for(mint ii=1;ii<(current_node_degree-1);ii++)
     {
-        /* printf("%.3f", M[1+ii*M_nrow]); */
+        /* VARIABLE TO STORE THE RESULTS */
         t_v2is * tmp_M_long;
-        tmp_M_long = (struct v2is *) malloc((sizeof(t_v2is))*M_nrow*M_nrow);    
+        tmp_M_long = (struct v2is *) malloc((sizeof(t_v2is))*M_nrow);
         
-        for(mint jj=0;jj<M_nrow;jj++)
+        /* FIRST ELEMENT IS ALWAYS 1,1 */
+        struct type_heap_array * heap_array;
+        struct type_heap_array * heap_array_pt;
+        struct type_heap_array * heap_array_element;
+        heap_array = (struct type_heap_array *) malloc (sizeof(struct type_heap_array));
+        heap_array->v = tmp_M[0].v;
+        heap_array->x = 0;
+        heap_array->y = -1;
+        heap_array->next = NULL;
+        if(M[ii*M_nrow]>0)
         {
-            /*  */
-            if(tmp_M[jj].v > 0)
-            {
-                for(mint kk=0;kk<M_nrow;kk++)
-                {
-                    if(M[kk+ii*M_nrow]>0)
-                    {
-                        tmp_M_long[jj*M_nrow+kk].v = tmp_M[jj].v+M[kk+ii*M_nrow];
-                        tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));    
-                        for(mint ll=0;ll<ii;ll++)
-                        {tmp_M_long[jj*M_nrow+kk].i[ll] = tmp_M[jj].i[ll];}
-                        tmp_M_long[jj*M_nrow+kk].i[ii]=kk+1;
-                    }
-                    else
-                    {
-                        tmp_M_long[jj*M_nrow+kk].v = 0;
-                        tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));
-                        for(mint ll=0;ll<current_node_degree-1;ll++)
-                        {
-                            tmp_M_long[jj*M_nrow+kk].i[ll] = 0;
-                        }
-                    }
-                }
-            }
-            /*  */
-            else
-            {
-                for(mint kk=0;kk<M_nrow;kk++)
-                {
-                    tmp_M_long[jj*M_nrow+kk].v = 0;
-                    tmp_M_long[jj*M_nrow+kk].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1));
-                    for(mint ll=0;ll<current_node_degree-1;ll++)
-                    {
-                        tmp_M_long[jj*M_nrow+kk].i[ll] = 0;
-                    }
-                }
-            }
+            heap_array->v += M[ii*M_nrow];
+            heap_array->y=0;
         }
-        /* for(mint jj=0;jj<M_nrow*M_nrow;jj++){printf("tmp_M_long %.4f %d %d %d\n",tmp_M_long[jj].v,tmp_M_long[jj].i[0],tmp_M_long[jj].i[1],tmp_M_long[jj].i[2]);} */
-        /*  update tmp_M */
-        /* for(mint jj=0;jj<M_nrow*M_nrow;jj++){printf("before %d %d ->%.3f %d %d %d\n", ii,jj,tmp_M_long[jj].v, tmp_M_long[jj].i[0], tmp_M_long[jj].i[1],tmp_M_long[jj].i[2]);}  */
-        qsort(tmp_M_long, M_nrow*M_nrow, sizeof(t_v2is), (void *)compare_structs_is);
-        /* for(mint jj=0;jj<M_nrow*M_nrow;jj++){printf("after %d %d ->%.3f %d %d %d\n", ii,jj,tmp_M_long[jj].v, tmp_M_long[jj].i[0], tmp_M_long[jj].i[1],tmp_M_long[jj].i[2]);}  */
-        
+        /* POP, ADD, REMOVE */
+        mint n_element = 0;
+        while(n_element<M_nrow)
+        {
+            // IF EMPTY
+            if(!heap_array)
+            {
+                tmp_M_long[n_element].v=0;
+                tmp_M_long[n_element].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1)); 
+                for(mint jj=0;jj<ii;jj++)
+                {tmp_M_long[n_element].i[jj] = 0;}
+                tmp_M_long[n_element].i[ii] = 0;
+                n_element++;
+                continue;
+            }
+            // NOT EMPTY
+            // POP UP FIRST ELEMENT
+            tmp_M_long[n_element].v = heap_array->v;
+            tmp_M_long[n_element].i = (mint *)malloc(sizeof(mint)*(current_node_degree-1)); 
+            for(mint jj=0;jj<ii;jj++)
+            {tmp_M_long[n_element].i[jj] = tmp_M[heap_array->x].i[jj];}
+            tmp_M_long[n_element].i[ii] = heap_array->y+1;
+            // ADD TWO NEW ELEMENTS
+            for(mint jj=0;jj<2;jj++)
+            {
+                mint new_x,new_y;
+                new_x = heap_array->x;
+                new_y = heap_array->y;
+                if(jj==0)
+                {new_x += 1;}
+                if(jj==1)
+                {new_y += 1;}
+                // OUT OF RANGE
+                if(new_x>=M_nrow || new_y>=M_nrow)
+                {continue;}
+                // NON-EXIST
+                if(tmp_M[new_x].v<=0 || M[new_y+ii*M_nrow]<=0)
+                {continue;}
+                // GET NEW PAIR
+                heap_array_element = (struct type_heap_array *) malloc (sizeof(struct type_heap_array));
+                heap_array_element->v = tmp_M[new_x].v + M[new_y+ii*M_nrow];
+                heap_array_element->x = new_x;
+                heap_array_element->y = new_y;
+                heap_array_element->next = NULL;
+                // PUT PAIR INTO HEAP ARRAY
+                heap_array_pt = heap_array;
+                mint overlap=0;
+                while(heap_array_pt->next)
+                {
+                    if((heap_array_pt->next)->v < heap_array_element->v)
+                    {break;}
+                    if(heap_array_pt->x==heap_array_element->x && heap_array_pt->y==heap_array_element->y)
+                    {
+                        overlap=1;
+                        break;
+                    }
+                    heap_array_pt = heap_array_pt->next;
+                }
+                if(heap_array_pt->x==heap_array_element->x && heap_array_pt->y==heap_array_element->y)
+                {overlap=1;}
+                if(overlap){free(heap_array_element);break;}
+                if(heap_array_pt->next)
+                {
+                    heap_array_element->next=(struct type_heap_array *) malloc (sizeof(struct type_heap_array));
+                    heap_array_element->next = heap_array_pt->next;
+                }
+                else
+                {
+                    heap_array_pt->next=(struct type_heap_array *) malloc (sizeof(struct type_heap_array));
+                }
+                heap_array_pt->next = heap_array_element;
+            }
+            // destroy the first element
+            heap_array_pt = heap_array;
+            heap_array = heap_array->next;
+            free(heap_array_pt);
+            n_element++;
+        }
+        // DESTROY THE REST HEAP ARRAY
+        while(heap_array)
+        {
+            heap_array_pt = heap_array;
+            heap_array = heap_array->next;
+            free(heap_array_pt);
+        }
+        // SAVE RESULTS
         for(mint jj=0;jj<M_nrow;jj++)
         {
             tmp_M[jj].v = tmp_M_long[jj].v;
-            /*  TODO  */
+            // COULD USE DEEP COPY
             for(mint kk=0;kk<ii+1;kk++)
             {tmp_M[jj].i[kk] = tmp_M_long[jj].i[kk];}
             /* printf("%d tmp_M %.4f %d %d %d\n",ii,tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]); */
         }
-        
-        for(mint ii=0; ii<M_nrow*M_nrow; ii++)
+        // DESTROY tmp_M_long
+        for(mint ii=0; ii<M_nrow; ii++)
         {free(tmp_M_long[ii].i);}
         free(tmp_M_long);
+        
     }
-    /* for(mint jj=0;jj<M_nrow;jj++){printf("tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);} */
     
+    //for(mint jj=0;jj<M_nrow;jj++){printf("res:tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);} 
     
-    
-    
-    /*  collect results */
+    /*  COLLECT RESULTS */
     for(mint ii=0;ii<M_nrow;ii++)
     {
         if(tmp_M[ii].v>0)
@@ -345,14 +390,12 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
         {res[ii+M_nrow*jj]=tmp_M[ii].i[jj];}
     }
     
-    /* destroy */
+    /* DESTROY TMP_M */
     for(mint ii=0; ii<M_nrow; ii++)
     {free(tmp_M[ii].i);}
     free(tmp_M);
-
-    /*  return results */
+    /*  RETURN RESULT */
     return res;
-    
 }
 
 

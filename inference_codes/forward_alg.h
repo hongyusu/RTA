@@ -15,6 +15,15 @@ typedef struct v2is
     mint *i;
 } t_v2is;
 
+
+struct type_heap_array
+{
+   double v;
+   mint x;
+   mint y;
+   struct type_heap_array * next;
+};
+
 void printm(double * M, mint nrow, mint ncol);
 int coo2ind(mwSize x, mwSize, mwSize len);
 double * LinearMaxSum(mxArray * M, mint current_node_degree);
