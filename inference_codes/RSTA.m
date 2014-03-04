@@ -59,7 +59,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MAX=2;
     else
         kappa_INIT=8;
-        kappa_MIN=4; 
+        kappa_MIN=2; 
         kappa_MAX=64;
     end
     
