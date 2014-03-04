@@ -231,7 +231,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
         return res;
     }
     
-    //printf("M\n");printm(M,M_nrow,M_ncol); 
+    //if(current_node_degree>3){printf("M\n");printm(M,M_nrow,M_ncol); }
     
     /*  INITIALIZE TMP_M WITH FIRST COLUMN OF M */
     t_v2is * tmp_M;
@@ -248,7 +248,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
         }
     }
     
-    //for(mint jj=0;jj<M_nrow;jj++){printf("INIT tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);} 
+    //if(current_node_degree>3){for(mint jj=0;jj<M_nrow;jj++){printf("INIT tmp_M %.4f %d %d %d\n",tmp_M[jj].v,tmp_M[jj].i[0],tmp_M[jj].i[1],tmp_M[jj].i[2]);} }
     
     /*  PROCESSING FROM 2nd COLUMN */
     for(mint ii=1;ii<(current_node_degree-1);ii++)
@@ -293,6 +293,9 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
             for(mint jj=0;jj<ii;jj++)
             {tmp_M_long[n_element].i[jj] = tmp_M[heap_array->x].i[jj];}
             tmp_M_long[n_element].i[ii] = heap_array->y+1;
+            
+            //if(current_node_degree>3){printf("\t--pop %.2f %d %d\n",heap_array->v,heap_array->x+1,heap_array->y+1);}
+                
             // ADD TWO NEW ELEMENTS
             for(mint jj=0;jj<2;jj++)
             {
@@ -300,21 +303,28 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
                 new_x = heap_array->x;
                 new_y = heap_array->y;
                 if(jj==0)
-                {new_x += 1;}
-                if(jj==1)
                 {new_y += 1;}
+                if(jj==1)
+                {new_x += 1;}
                 // OUT OF RANGE
                 if(new_x>=M_nrow || new_y>=M_nrow)
-                {continue;}
+                {
+                    //printf("\t-----range: \n");
+                    continue;
+                }
                 // NON-EXIST
                 if(tmp_M[new_x].v<=0 || M[new_y+ii*M_nrow]<=0)
-                {continue;}
+                {
+                    //printf("\t-----exist: %d %d %.2f %.2f \n",new_x+1,new_y+1,tmp_M[new_x].v,M[new_y+ii*M_nrow]);
+                    continue;
+                }
                 // GET NEW PAIR
                 heap_array_element = (struct type_heap_array *) malloc (sizeof(struct type_heap_array));
                 heap_array_element->v = tmp_M[new_x].v + M[new_y+ii*M_nrow];
                 heap_array_element->x = new_x;
                 heap_array_element->y = new_y;
                 heap_array_element->next = NULL;
+                //if(current_node_degree>3){printf("\t-----add %.2f %d %d\n",heap_array_element->v,heap_array_element->x+1,heap_array_element->y+1);}
                 // PUT PAIR INTO HEAP ARRAY
                 heap_array_pt = heap_array;
                 mint overlap=0;
@@ -331,7 +341,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
                 }
                 if(heap_array_pt->x==heap_array_element->x && heap_array_pt->y==heap_array_element->y)
                 {overlap=1;}
-                if(overlap){free(heap_array_element);break;}
+                if(overlap){free(heap_array_element);continue;}
                 if(heap_array_pt->next)
                 {
                     heap_array_element->next=(struct type_heap_array *) malloc (sizeof(struct type_heap_array));

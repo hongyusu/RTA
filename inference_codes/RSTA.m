@@ -54,13 +54,16 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     mu_list = cell(T_size);
     
     if T_size == 1
-        kappa_MIN = 2;
-        kappa_INIT=8;
+        kappa_INIT=2;
+        kappa_MIN=2;
+        kappa_MAX=2;
     else
-        kappa_INIT = 8;
-        kappa_MIN = 4; 
+        kappa_INIT=8;
+        kappa_MIN=4; 
+        kappa_MAX=64;
     end
-    kappa_MAX = 64;
+    
+    
     
     kappa=kappa_INIT;
     
@@ -142,6 +145,12 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
                 end
                 profile_update_tr;
             end
+            
+            if kappa_decrease_flags(xi)==0
+                kappa = min(kappa*2,kappa_MAX);
+            else
+                kappa = max(ceil(kappa/2),kappa_MIN);
+            end
         end
         %obj_list
         progress_made = (obj >= prev_obj);  
@@ -167,11 +176,11 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Smu_list=Smu_list;
         end
         % update kappa
-        if sum(kappa_decrease_flags)<=m*.8
-            kappa = min(kappa*2,kappa_MAX);
-        else
-            kappa = max(ceil(kappa/2),kappa_MIN);
-        end
+%         if sum(kappa_decrease_flags)<=m*.8
+%             kappa = min(kappa*2,kappa_MAX);
+%         else
+%             kappa = max(ceil(kappa/2),kappa_MIN);
+%         end
         
     end
     
@@ -493,7 +502,15 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     print_message(sprintf('Get worst violator'),3)
     [Ymax, ~, kappa_decrease_flag] = find_worst_violator_matlab(Y_kappa,Y_kappa_val);
     
+    if kappa_decrease_flag == 0
+        delta_obj_list = zeros(1,T_size);
+        return
+    end
     
+%     Y_kappa
+%     Y_kappa_val
+%     Ymax
+%     kappa_decrease_flag
     %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);

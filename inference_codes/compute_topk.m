@@ -23,17 +23,20 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
             Ymax = Ymax +1;
             return
     end
-    
+    training_gradients = cell(m);
+    for training_i = 1:m
+        training_gradients{training_i} = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));
+    end
     %% iteration throught examples
     for training_i = 1:m
         %% get training gradient
-        training_gradient = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));
+        training_gradient = training_gradients{training_i};
         %% forward algorithm to get P_node and T_node
         %[P_node1,T_node1] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
 %         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
         [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-        %[P_node1,T_node1] = copy_forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+        %[P_node,T_node] = copy_forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
 %         if sum(sum(P_node==P_node1))~=size(T_node,1)*size(T_node,2)
 %             a=((T_node==T_node1)*2-1)
 %             P_node.*a
@@ -77,9 +80,9 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
 
         %[Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
         [Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree);
-        clear P_node;
-        clear Q_node;
-            
+%         clear P_node;
+%         clear Q_node;
+%             
             
         
         Ymax(training_i,:) = Ymax_single;
