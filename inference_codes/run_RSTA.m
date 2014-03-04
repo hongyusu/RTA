@@ -4,6 +4,11 @@
 % output graph structure connecting multiple output labels
 function run_RSTA(filename,graph_type,t,isTest)
 
+mex forward_alg.c
+mex backward_alg.c
+mex find_worst_violator.c
+
+
     %% tackle input parameters
     if nargin <1
         disp('Not enough input parameters!')
