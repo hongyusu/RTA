@@ -36,6 +36,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         PAR =0;
     end
     
+
+    
+    
     params=paramsIn;
     Kx_tr=dataIn.Kx_tr;
     Kx_ts=dataIn.Kx_ts;
@@ -53,16 +56,15 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     cc  = 1/T_size;
     mu_list = cell(T_size);
     
-    if T_size == 1
+    if T_size <= 1
         kappa_INIT=2;
         kappa_MIN=2;
         kappa_MAX=2;
     else
         kappa_INIT=128;
-        kappa_MIN=128:w; 
+        kappa_MIN=128; 
         kappa_MAX=256;
     end
-    
     
     
     kappa=kappa_INIT;
@@ -92,12 +94,11 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         compute_duality_gap;
     end
     profile_update_tr;
-
        
     
     %% iterate until converge
     % parameters
-    obj=0;
+    
     obj_list = zeros(1,T_size);
     prev_obj = 0;
     iter=0; 
@@ -324,10 +325,14 @@ function compute_duality_gap
     
     %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
-        [Ypred(i,:),~,kappa_decrease_flag] = ...
-            find_worst_violator(...
-            Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
-            Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
+        if sum(sum(Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:)==Y_kappa_val(i,1)))==kappa*T_size
+            Ypred(i,:) = -1*ones(1,size(Y_tr,2));
+        else
+            [Ypred(i,:),~,kappa_decrease_flag] = ...
+                find_worst_violator(...
+                Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
+                Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
+        end
 %         if ~kappa_decrease_flag
 %             [Ypred(i,:),~] = majority_voting(...
 %             Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
@@ -355,7 +360,7 @@ function compute_duality_gap
         dgap(t) = sum(duality_gap);
     end
     %% primal upper bound
-    primal_ub = obj + sum(dgap(t));
+    primal_ub = obj + sum(dgap);
     
     return;
 end
@@ -473,6 +478,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global Y_tr;
     global T_size;
     global params;
+    global obj;
     
     Y_kappa = zeros(T_size,kappa*l);        % label prediction
     Y_kappa_val = zeros(T_size,kappa);      % score
@@ -495,6 +501,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Kmu_x = Kmu_x_list_local{t};
         gradient_list_local{t} =  cc*loss - (1/T_size)*Kmu_x;    % current gradient    
         gradient = gradient_list_local{t};
+        
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
         % save resutls
@@ -502,10 +509,23 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Y_kappa_val(t,:) = YmaxVal;
     end
     
-    %% get worst violator from top K
-    print_message(sprintf('Get worst violator'),3)
-    [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
     
+    %% get worst violator from top K
+    if sum(sum(Y_kappa_val==Y_kappa_val(1))) == size(Y_kappa_val,1)*size(Y_kappa_val,2)
+        Ymax = ones(1,l)*(-1);
+        kappa_decrease_flag=1;
+    else
+        [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
+    end
+    
+%     
+%     if x==1
+%         Y_kappa
+%         Y_kappa_val
+%         Ymax
+%         asdfas
+%     end
+
     if ~kappa_decrease_flag
 %         for i=1:size(Y_kappa_val,1)
 %             for j = 1:size(Y_kappa_val,2)
@@ -543,12 +563,15 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 %     Y_kappa_val
 %     Ymax
 %     kappa_decrease_flag
+
+
     %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);
         return;
     end
     
+
     
     %% otherwise line serach
     mu_d_list = mu_list;
@@ -601,13 +624,16 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         
     end
     
+
+    
+
     % decide whether to update or not
     if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size *1
         tau = min(sum(nomi)/sum(denomi),1);
     else
         tau=0;
     end
-
+    
     %% update for each tree
     delta_obj_list = zeros(1,T_size);
     for t=1:T_size
@@ -634,7 +660,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
     end
-    
+       
     return;
 end
 function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent(x, kappa)

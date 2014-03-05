@@ -27,6 +27,7 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
     for training_i = 1:m
         training_gradients{training_i} = gradient(1:4,((training_i-1)*size(E,1)+1):(training_i*size(E,1)));
     end
+    
     %% iteration throught examples
     for training_i = 1:m
         %% get training gradient
@@ -77,7 +78,6 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
 %          afdsdf
 %        end
 %         end
-
         %[Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
         [Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree);
 %         clear P_node;
@@ -89,6 +89,7 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
         YmaxVal(training_i,:) = YmaxVal_single;       
     end
     YmaxVal = YmaxVal + min_gradient_val*size(E,1);
+    
     
  
         
