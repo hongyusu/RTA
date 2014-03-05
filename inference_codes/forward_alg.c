@@ -342,20 +342,23 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
                 if(heap_array_pt->x==heap_array_element->x && heap_array_pt->y==heap_array_element->y)
                 {overlap=1;}
                 if(overlap){free(heap_array_element);continue;}
-                if(heap_array_pt->next)
-                {
-                    heap_array_element->next=(struct type_heap_array *) malloc (sizeof(struct type_heap_array));
-                    heap_array_element->next = heap_array_pt->next;
-                }
-                else
-                {
-                    heap_array_pt->next=(struct type_heap_array *) malloc (sizeof(struct type_heap_array));
-                }
+                heap_array_element->next = heap_array_pt->next;
                 heap_array_pt->next = heap_array_element;
+//                 if(heap_array_pt->next)
+//                 {
+//                     heap_array_element->next=(struct type_heap_array *) malloc (sizeof(struct type_heap_array));
+//                     heap_array_element->next = heap_array_pt->next;
+//                 }
+//                 else
+//                 {
+//                     heap_array_pt->next=(struct type_heap_array *) malloc (sizeof(struct type_heap_array));
+//                 }
+//                 heap_array_pt->next = heap_array_element;
             }
             // destroy the first element
             heap_array_pt = heap_array;
             heap_array = heap_array->next;
+            heap_array_pt->next=NULL;
             free(heap_array_pt);
             n_element++;
         }
@@ -364,6 +367,7 @@ double * LinearMaxSum(mxArray * M_array, mint current_node_degree)
         {
             heap_array_pt = heap_array;
             heap_array = heap_array->next;
+            heap_array_pt->next=NULL;
             free(heap_array_pt);
         }
         // SAVE RESULTS

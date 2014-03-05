@@ -61,9 +61,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MIN=2;
         kappa_MAX=2;
     else
-        kappa_INIT=128;
-        kappa_MIN=128; 
-        kappa_MAX=256;
+        kappa_INIT=4;
+        kappa_MIN=4; 
+        kappa_MAX=128;
     end
     
     
@@ -326,6 +326,7 @@ function compute_duality_gap
     %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
         if sum(sum(Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:)==Y_kappa_val(i,1)))==kappa*T_size
+            kappa_decrease_flag = 1;
             Ypred(i,:) = -1*ones(1,size(Y_tr,2));
         else
             [Ypred(i,:),~,kappa_decrease_flag] = ...
