@@ -49,8 +49,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
-    cc  = 1/T_size/size(E_list{1},1);
-    %cc  = 1/T_size;
+    %cc  = 1/T_size/size(E_list{1},1);
+    cc  = 1/T_size;
     mu_list = cell(T_size);
     
     if T_size == 1
@@ -58,9 +58,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MIN=2;
         kappa_MAX=2;
     else
-        kappa_INIT=4;
-        kappa_MIN=2; 
-        kappa_MAX=16;
+        kappa_INIT=128;
+        kappa_MIN=128:w; 
+        kappa_MAX=256;
     end
     
     
@@ -516,6 +516,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 %         Y_kappa_ind
 %         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
         [Ymax,~] = majority_voting(Y_kappa,Y_kappa_val,l);
+        %Ymax = Y_kappa(1,1:l);
 %         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
     end
 
@@ -792,14 +793,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     return;
 end
 
-%% 
-function [Ymax, YmaxVal] = majority_voting(Y_kappa,Y_kappa_val,nlabel)
-    use_n_label = 1;
-    Ymax = sum(reshape(Y_kappa(:,1:(nlabel*use_n_label)),size(Y_kappa,1)*use_n_label,nlabel));
-    Ymax = (Ymax>0)*2-1;
-    YmaxVal = mean(reshape(Y_kappa_val(:,1:(use_n_label)),size(Y_kappa,1)*use_n_label,1));
-    return
-end
+
 
 %% Compute Gmax
 function [Gmax] = compute_Gmax(gradient,Ymax,E)

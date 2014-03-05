@@ -88,6 +88,7 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
         Ymax(training_i,:) = Ymax_single;
         YmaxVal(training_i,:) = YmaxVal_single;       
     end
+    YmaxVal = YmaxVal + min_gradient_val*size(E,1);
     
  
         

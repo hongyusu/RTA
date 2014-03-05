@@ -34,7 +34,7 @@ def run():
   n=0
   for filename in filenames:
     for graph_type in ['tree']:
-      for t in range(0,21,4):
+      for t in range(0,101,10):
         if t==0:
           t=1
         para_t="%d" % (t)
