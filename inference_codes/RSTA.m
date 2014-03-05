@@ -29,6 +29,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global kappa;   % K best
     global PAR;     % parallel compuing on matlab with matlabpool
     global kappa_decrease_flags;  
+    global tol;
+    
+    tol = 1e-8;
     
     if T_size >= 20
         PAR=0;
@@ -61,9 +64,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MIN=2;
         kappa_MAX=2;
     else
-        kappa_INIT=4;
+        kappa_INIT=64;
         kappa_MIN=4; 
-        kappa_MAX=128;
+        kappa_MAX=32;
     end
     
     
@@ -961,6 +964,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     global Ye_list;
     global mu_list;
     global kappa;
+    global tol;
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
@@ -977,7 +981,8 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     end
     %% compute top '1' for all tree
     for i=1:size(Y,1)
-        if sum(sum(Y_kappa_val((i:size(Y,1):size(Y_kappa_val,1)),:)==Y_kappa_val(i,1)))==kappa*T_size
+        i
+        if sum(sum(Y_kappa_val((i:size(Y,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1)>=tol))==kappa*T_size
             kappa_decrease_flag = 1;
             Ypred(i,:) = -1*ones(1,size(Y,2));
         else
