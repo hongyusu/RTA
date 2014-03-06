@@ -66,7 +66,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     else
         kappa_INIT=64;
         kappa_MIN=4; 
-        kappa_MAX=32;
+        kappa_MAX=64;
     end
     
     
@@ -300,6 +300,7 @@ function compute_duality_gap
     global obj;
     global kappa;
     global cc;
+    global tol;
     
     m=size(Kx_tr,1);
     Y=Y_tr;
@@ -328,7 +329,7 @@ function compute_duality_gap
     
     %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
-        if sum(sum(Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:)==Y_kappa_val(i,1)))==kappa*T_size
+        if sum(sum(Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1)>=tol))==kappa*T_size
             kappa_decrease_flag = 1;
             Ypred(i,:) = -1*ones(1,size(Y_tr,2));
         else
@@ -483,6 +484,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global T_size;
     global params;
     global obj;
+    global tol;
     
     Y_kappa = zeros(T_size,kappa*l);        % label prediction
     Y_kappa_val = zeros(T_size,kappa);      % score
@@ -515,7 +517,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
     
     %% get worst violator from top K
-    if sum(sum(Y_kappa_val==Y_kappa_val(1))) == size(Y_kappa_val,1)*size(Y_kappa_val,2)
+    if sum(sum(Y_kappa_val-Y_kappa_val(1)>tol)) == size(Y_kappa_val,1)*size(Y_kappa_val,2)
         Ymax = ones(1,l)*(-1);
         kappa_decrease_flag=1;
     else
@@ -632,7 +634,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
 
     % decide whether to update or not
-    if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size *1
+    if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size *.6
         tau = min(sum(nomi)/sum(denomi),1);
     else
         tau=0;
@@ -981,7 +983,6 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     end
     %% compute top '1' for all tree
     for i=1:size(Y,1)
-        i
         if sum(sum(Y_kappa_val((i:size(Y,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1)>=tol))==kappa*T_size
             kappa_decrease_flag = 1;
             Ypred(i,:) = -1*ones(1,size(Y,2));

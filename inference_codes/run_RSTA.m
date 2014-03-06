@@ -3,10 +3,10 @@
 % running MMCRF on one dataset with random tree / random pair graph as
 % output graph structure connecting multiple output labels
 function run_RSTA(filename,graph_type,t,isTest)
-
-mex forward_alg.c
-mex backward_alg.c
-mex find_worst_violator.c
+% 
+% mex forward_alg.c
+% mex backward_alg.c
+% mex find_worst_violator.c
 
 
     %% tackle input parameters
@@ -110,7 +110,7 @@ mex find_worst_violator.c
     catch err
         disp(err)
         mmcrf_c = 10;
-        mmcrf_g = 0.01;
+        mmcrf_g = -10000;%0.01;
         mmcrf_i = 100;
     end
     % display something
@@ -204,8 +204,9 @@ mex find_worst_violator.c
     
     %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
     save(sprintf('../outputs/%s.mat', paramsIn.filestem), 'perf','Ypred', 'YpredVal', 'running_times', 'muList');
+    system(sprintf('mv /var/tmp/%s.log ../outputs/', suffix));
 
-    if ~isTest
+    if isTest
         exit
     end
 end
