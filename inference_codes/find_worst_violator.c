@@ -4,7 +4,7 @@
 #include "mex.h"
 #include "find_worst_violator.h"
 #include "stdio.h"
-
+#include "time.h"
 
 
 
@@ -21,12 +21,14 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
     #define IN_Y_kappa          prhs[0]
     #define IN_Y_kappa_val      prhs[1]
+    #define IN_Y                prhs[2]
     #define OUT_Ymax            plhs[0]
     #define OUT_YmaxVal         plhs[1]
     #define OUT_break_flag      plhs[2]
     
     double * Y_kappa;
     double * Y_kappa_val;
+    double * Y;
     double * Ymax;
     double break_flag=0;
     
@@ -35,6 +37,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     mint Y_kappa_val_nrow;
     mint Y_kappa_val_ncol;
     mint nlabel;
+    mint Y_ncol;
+    mint Y_nrow;
     
     /* INPUT VARIABLES */
     Y_kappa = mxGetPr(IN_Y_kappa);
@@ -43,6 +47,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     Y_kappa_val = mxGetPr(IN_Y_kappa_val);
     Y_kappa_val_nrow = mxGetM(IN_Y_kappa_val);
     Y_kappa_val_ncol = mxGetN(IN_Y_kappa_val);
+    Y = mxGetPr(IN_Y);
+    Y_ncol = mxGetN(IN_Y);
+    Y_nrow = mxGetM(IN_Y);
+    
     nlabel=Y_kappa_ncol/Y_kappa_val_ncol;
     /* OUTPUT VARIABLES */
     OUT_Ymax = mxCreateDoubleMatrix(1,nlabel,mxREAL);
@@ -64,10 +72,34 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             for(mint kk=0;kk<nlabel;kk++)
             {
                 /* printf("%.2f %.2f\n",Y_kappa_ind[ii+jj*Y_kappa_nrow], Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]); */
-                Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + ((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1 ? 1:0);
+                double tmp=0;
+                if((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1)
+                {tmp=1;}
+                Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + tmp;
+                //Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + ((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1 ? 1:0);
             }
         }
     }
+    /* TRUE */
+    double Y_ind;
+    Y_ind = -1;
+    if(Y_nrow>0)
+    {
+        Y_ind ++;
+        for(mint kk=0;kk<nlabel;kk++)
+        {
+            double tmp = 0;
+            if((Y[kk]+1)/2==1)
+            {tmp=1;}
+            Y_ind = Y_ind*2+tmp;
+            //Y_ind = Y_ind*2 + ((Y[kk]+1)/2==1 ? 1:0);
+        }
+    }
+    
+
+    
+    //printf("fadf ");
+    
     
     /* printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol); */
     /* printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol); */
@@ -77,7 +109,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     struct type_element_list * cur_pos;
     my_list=NULL;
     cur_pos=NULL;
-    double max_val = -1;
+    double max_val = -1000000000;
     double max_ind = -1;
     mint max_row;
     mint max_col;
@@ -98,11 +130,11 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 				my_list->id = Y_kappa_ind[jj+ii*Y_kappa_val_nrow];
 				my_list->val = 0;
 				my_list->next = NULL;
-                /* printf("-->init %.2f %.2f\n", my_list->id, my_list->val); */
+                //printf("-->init %.2f %.2f\n", my_list->id, my_list->val);
             }
             cur_pos = my_list;
 			/* LOOP THE LIST AND UPDATE ELEMENT */
-            /* printf("-->on %d %d %.2f %.2f\n",jj,ii,Y_kappa_ind[jj+ii*Y_kappa_val_nrow],Y_kappa_val[jj+ii*Y_kappa_val_nrow]); */
+            //printf("-->on %d %d %.2f %.2f\n",jj,ii,Y_kappa_ind[jj+ii*Y_kappa_val_nrow],Y_kappa_val[jj+ii*Y_kappa_val_nrow]);
             mint find_flag=0;
 			while(1)
 			{
@@ -129,7 +161,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 /* printf("-->add %.2f %.2f\n", cur_pos->id, cur_pos->val); */
 			}
             /* ACCESS UPDATED VALUE */
-            if(max_val<cur_pos->val)
+            
+            if(max_val<cur_pos->val & cur_pos->id!=Y_ind)
             {
                 max_val = cur_pos->val;
                 max_ind = cur_pos->id;
@@ -151,15 +184,20 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         my_list = my_list->next;
         free(cur_pos);
     }  
+    
+    
     mxDestroyArray(mat_Y_kappa_ind);
+    
     /* COLLECT RESULTS */
     *(mxGetPr(OUT_YmaxVal)) = max_val;
     *(mxGetPr(OUT_break_flag)) = break_flag;
+    
     for(mint ii=0;ii<nlabel;ii++)
     {
-        /* printf("%d %d %d %d\n",max_row,max_col,max_row,(max_col*nlabel+ii)*Y_kappa_nrow); */
+//         printf("%d %d %d %d\n",max_row,max_col,max_row,(max_col*nlabel+ii)*Y_kappa_nrow); 
         Ymax[ii] = Y_kappa[max_row+(max_col*nlabel+ii)*Y_kappa_nrow];
     }
+    
     /* printf("%d %d %.2f %.2f\n", max_row, max_col,max_ind,max_val); */
 }
 

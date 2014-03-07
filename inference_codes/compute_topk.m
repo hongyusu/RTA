@@ -60,6 +60,7 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
 %         end
         
 
+
   
         %% backward algorithm to get Ymax and YmaxVal
 %         try
@@ -82,12 +83,12 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
         [Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree);
 %         clear P_node;
 %         clear Q_node;
-%             
-            
+%           
         
         Ymax(training_i,:) = Ymax_single;
         YmaxVal(training_i,:) = YmaxVal_single;       
     end
+
     YmaxVal = YmaxVal + min_gradient_val*size(E,1);
     
     

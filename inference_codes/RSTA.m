@@ -30,7 +30,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global PAR;     % parallel compuing on matlab with matlabpool
     global kappa_decrease_flags;  
     global tol;
-    
+    global iter;
     tol = 1e-8;
     
     if T_size >= 20
@@ -39,6 +39,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         PAR =0;
     end
     
+    global previous;
+    previous=[];
 
     
     
@@ -55,8 +57,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
-    %cc  = 1/T_size/size(E_list{1},1);
-    cc  = 1/T_size;
+    cc  = 1/T_size/size(E_list{1},1);
+    %cc  = 1/T_size;
     mu_list = cell(T_size);
     
     if T_size <= 1
@@ -130,8 +132,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         % iterate over examples 
         iter = iter +1;   
         kappa_decrease_flags = zeros(1,m);
+        tmp_Kxx_mu_x_list = Kxx_mu_x_list;
         for xi = 1:m
-        %for xi = randsample(1:m,ceil(m*0.8))
+        %for xi = randsample(1:m,ceil(m*0.2))
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
@@ -141,12 +144,13 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
             
-%             if kappa_decrease_flags(xi)==0
-%                 kappa = min(kappa*2,kappa_MAX);
-%             else
-%                 kappa = max(ceil(kappa/2),kappa_MIN);
-%             end
+            if kappa_decrease_flags(xi)==0
+                kappa = min(kappa*2,kappa_MAX);
+            else
+                kappa = max(ceil(kappa/2),kappa_MIN);
+            end
         end
+        
         %obj_list
         progress_made = (obj >= prev_obj);  
         prev_obj = obj;
@@ -170,12 +174,12 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Rmu_list=Rmu_list;
             best_Smu_list=Smu_list;
         end
-        % update kappa
-        if sum(kappa_decrease_flags)<=m*.75
-            kappa = min(kappa*2,kappa_MAX);
-        else
-            kappa = max(ceil(kappa/2),kappa_MIN);
-        end
+%         % update kappa
+%         if sum(kappa_decrease_flags)<=m*.75
+%             kappa = min(kappa*2,kappa_MAX);
+%         else
+%             kappa = max(ceil(kappa/2),kappa_MIN);
+%         end
         
     end
     
@@ -336,7 +340,7 @@ function compute_duality_gap
             [Ypred(i,:),~,kappa_decrease_flag] = ...
                 find_worst_violator(...
                 Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
-                Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
+                Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:),[]);
         end
 %         if ~kappa_decrease_flag
 %             [Ypred(i,:),~] = majority_voting(...
@@ -422,7 +426,7 @@ function par_compute_duality_gap
     parfor i=1:size(Y,1)
         [Ypred(i,:),~,kappa_decrease_flag] = ...
             find_worst_violator(Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
-            Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:));
+            Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:),[]);
 %         if ~kappa_decrease_flag
 %             [Ypred(i,:),~] = majority_voting(...
 %             Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
@@ -483,8 +487,9 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global Y_tr;
     global T_size;
     global params;
-    global obj;
     global tol;
+    global iter;
+    
     
     Y_kappa = zeros(T_size,kappa*l);        % label prediction
     Y_kappa_val = zeros(T_size,kappa);      % score
@@ -516,14 +521,15 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     end
     
     
+
     %% get worst violator from top K
     if sum(sum(Y_kappa_val-Y_kappa_val(1)>tol)) == size(Y_kappa_val,1)*size(Y_kappa_val,2)
         Ymax = ones(1,l)*(-1);
         kappa_decrease_flag=1;
     else
-        [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
+        [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,Y_tr(x,:));
     end
-    
+
 %     
 %     if x==1
 %         Y_kappa
@@ -541,7 +547,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 %         end
 %         Y_kappa_ind
 %         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
-        [Ymax,~] = majority_voting(Y_kappa,Y_kappa_val,l);
+        [Ymax,~] = majority_voting(Y_kappa,Y_kappa_val,l,Y_tr(x,:));
         %Ymax = Y_kappa(1,1:l);
 %         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
     end
@@ -570,14 +576,12 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 %     Ymax
 %     kappa_decrease_flag
 
-
     %% if the worst violator is the correct label, exit without update mu
     if sum(Ymax~=Y_tr(x,:))==0
         delta_obj_list = zeros(1,T_size);
         return;
     end
     
-
     
     %% otherwise line serach
     mu_d_list = mu_list;
@@ -634,11 +638,16 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
 
     % decide whether to update or not
-    if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size *.6
+    
+    if sum(Gmax)>=sum(G0)% && sum(Gmax>=G0) >= T_size %* (1/(max(20-iter,1.2)))
         tau = min(sum(nomi)/sum(denomi),1);
     else
         tau=0;
     end
+    tau = max(tau,0);
+    
+%     fprintf('%d->%.2f\n ',sum(Gmax>=G0),tau);
+%     fprintf('%d ',sum(Gmax>=G0));
     
     %% update for each tree
     delta_obj_list = zeros(1,T_size);
@@ -666,7 +675,6 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
     end
-       
     return;
 end
 function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent(x, kappa)
@@ -720,7 +728,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     
     %% get worst violator from top K
     print_message(sprintf('Get worst violator'),3)
-    [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val);
+    [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,[]);
     
     if ~kappa_decrease_flag
         [Ymax,~] = majority_voting(Y_kappa,Y_kappa_val,l);
@@ -924,6 +932,8 @@ function profile_update_tr
     global kappa;
     global opt_round;
     global kappa_decrease_flags;
+    
+
 
     tm = cputime;
     
@@ -936,6 +946,9 @@ function profile_update_tr
         else
             [Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
         end
+        
+
+
         %[Ypred_tr,~] = compute_error(Y_tr,Kx_tr);
         profile.microlabel_errors = sum(abs(Ypred_tr-Y_tr) >0,2);
         profile.n_err_microlbl = sum(profile.microlabel_errors);
@@ -981,6 +994,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
     end
+    
     %% compute top '1' for all tree
     for i=1:size(Y,1)
         if sum(sum(Y_kappa_val((i:size(Y,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1)>=tol))==kappa*T_size
@@ -990,18 +1004,15 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
             [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = ...
                 find_worst_violator(...
                 Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
-                Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:));
-        end
-        if ~kappa_decrease_flag
-            [Ypred(i,:),YpredVal(i,:)] = majority_voting(...
-            Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
-            Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:),...
-            size(Y,2));
+                Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:),[]);
         end
 %         if ~kappa_decrease_flag
-%             Ypred(i,:) = (sum(Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),1:size(Y,2)))>0)*2-1;
-%             YpredVal(i,:) = mean(Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),1));
+%             [Ypred(i,:),YpredVal(i,:)] = majority_voting(...
+%             Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
+%             Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:),...
+%             size(Y,2));
 %         end
+
     end
     
     return;
@@ -1043,7 +1054,7 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
     end
     parfor i=1:size(Y,1)
         pause(0.000);
-        [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = find_worst_violator(input_labels{i},input_scores{i});
+        [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = find_worst_violator(input_labels{i},input_scores{i},[]);
         if ~kappa_decrease_flag
             [Ypred(i,:),YpredVal(i,:)] = majority_voting(...
             input_labels{i},...
@@ -1165,7 +1176,8 @@ end
 function print_message(msg,verbosity_level,filename)
     global params;
     if params.verbosity >= verbosity_level
-        fprintf('%s: %s\n',datestr(clock,13),msg);
+        %fprintf('%s: %s\n',datestr(clock,13),msg);
+        fprintf('\n%s: %s ',datestr(clock,13),msg);
         if nargin == 3
             fid = fopen(filename,'a');
             fprintf(fid,'%s: %s\n',datestr(clock,13),msg);
