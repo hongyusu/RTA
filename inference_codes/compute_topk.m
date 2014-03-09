@@ -29,68 +29,55 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
     end
     
     %% iteration throught examples
-    for training_i = 1:m
-        %% get training gradient
-        training_gradient = training_gradients{training_i};
-        %% forward algorithm to get P_node and T_node
-        %[P_node1,T_node1] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
-%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
-        [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-        %[P_node,T_node] = copy_forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-%         if sum(sum(P_node==P_node1))~=size(T_node,1)*size(T_node,2)
-%             a=((T_node==T_node1)*2-1)
-%             P_node.*a
-%             P_node1.*a
-%             T_node.*a
-%             T_node1.*a
-%             fadf
-%         end
-%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
-%         disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
+    if m>1
+        if matlabpool('size') == 0 % checking to see if my pool is already open
+            matlabpool open;
+        end
+        num_partition = matlabpool('size');
+        ii=1;
+        start_position{ii}=1;
+        while start_position{ii} + ceil(m/num_partition) <m
+            ii=ii+1;
+            start_position{ii}=start_position{ii-1}+ceil(m/num_partition);
+        end
+        start_position{ii+1} = m+1;
+        par_Ymax = cell(size(start_position,2)-1);
+        par_YmaxVal = cell(size(start_position,2)-1);
+        parfor partition_i = 1:(size(start_position,2)-1)
+            training_i_range = [start_position{partition_i}:(start_position{partition_i+1}-1)];
+            i_Ymax = zeros(size(training_i_range,1),nlabel*K);
+            i_YmaxVal = zeros(size(training_i_range,1),K);
+            for training_i = training_i_range
+                %[partition_i,training_i]
+                training_gradient = training_gradients{training_i};
+                [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+                [Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree);
+                i_Ymax(training_i-training_i_range(1)+1,:) = Ymax_single;
+                i_YmaxVal(training_i-training_i_range(1)+1,:) = YmaxVal_single;
+            end
+            par_Ymax{partition_i} = i_Ymax;
+            par_YmaxVal{partition_i} = i_YmaxVal;
+        end
+        for partition_i = 1:(size(start_position,2)-1)
+            training_i_range = [start_position{partition_i}:(start_position{partition_i+1}-1)];
+            Ymax(training_i_range,:) = par_Ymax{partition_i};
+            YmaxVal(training_i_range,:) = par_YmaxVal{partition_i};
+        end
+        %matlabpool close;
+        YmaxVal = YmaxVal + min_gradient_val*size(E,1);
+    else
+        for training_i = 1:m
+            %% get training gradient
+            training_gradient = training_gradients{training_i};
+            %% forward algorithm to get P_node and T_node
+            [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+            [Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree);
+            Ymax(training_i,:) = Ymax_single;
+            YmaxVal(training_i,:) = YmaxVal_single;       
+        end
 
-%         if sum(sum(T_node~=T_node1))>0
-%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node])
-%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node1])
-%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node-P_node1])
-%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node])
-%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node1])
-%             disp([reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node-T_node1])
-%             afdsfsd
-%         end
-        
-
-
-  
-        %% backward algorithm to get Ymax and YmaxVal
-%         try
-%         [Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
-%         catch
-%        if node_degree(1)==2
-%             a=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node];
-%             b=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node];
-%             disp(a(550:640,:))
-%             disp(b(550:640,:))
-%             [P_node,T_node] = forward_alg_matlab(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
-%             a=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),T_node];
-%             b=[reshape(repmat(1:nlabel,K,1),nlabel*K,1),repmat([1:K]',nlabel,1),P_node];
-%             disp(a(550:640,:))
-%             disp(b(550:640,:))
-%          afdsdf
-%        end
-%         end
-        %[Ymax_single, YmaxVal_single] = backward_alg_matlab(P_node, T_node, K, E, nlabel, node_degree);
-        [Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree);
-%         clear P_node;
-%         clear Q_node;
-%           
-        
-        Ymax(training_i,:) = Ymax_single;
-        YmaxVal(training_i,:) = YmaxVal_single;       
-    end
-
-    YmaxVal = YmaxVal + min_gradient_val*size(E,1);
-    
+        YmaxVal = YmaxVal + min_gradient_val*size(E,1);
+    end    
     
  
         

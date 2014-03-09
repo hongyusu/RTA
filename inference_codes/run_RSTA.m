@@ -2,7 +2,7 @@
 %%
 % running MMCRF on one dataset with random tree / random pair graph as
 % output graph structure connecting multiple output labels
-function run_RSTA(filename,graph_type,t,isTest)
+function run_RSTA(filename,graph_type,t,isTest,kth_fold)
 % 
 % mex forward_alg.c
 % mex backward_alg.c
@@ -23,15 +23,20 @@ function run_RSTA(filename,graph_type,t,isTest)
     if nargin < 4
         isTest = '0';
     end
+    if nargin < 5
+        kth_fold='1';
+    end
+    
     % set random number seed
     rand('twister', 0);
     % suffix for write result files
-    suffix=sprintf('%s_%s_%s_RSTAr', filename,graph_type,t);
+    suffix=sprintf('%s_%s_%s_f%s_RSTAr', filename,graph_type,t,kth_fold);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     %
     t=eval(t);
     isTest = eval(isTest);
+    kth_fold = eval(kth_fold);
     % get search path
     addpath('../shared_scripts/');  
     % get current hostname
@@ -111,7 +116,7 @@ function run_RSTA(filename,graph_type,t,isTest)
         disp(err)
         mmcrf_c = 10;
         mmcrf_g = -10000;%0.01;
-        mmcrf_i = 100;
+        mmcrf_i = 50;
     end
     % display something
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
@@ -146,13 +151,13 @@ function run_RSTA(filename,graph_type,t,isTest)
     perfRand=[];
     perfValEns=[];
     perfBinEns=[];
-    Ypred=Y;
-    YpredVal=Y;
+    Ypred=zeros(size(Y));
+    YpredVal=zeros(size(Y));
     running_times=zeros(nfold,1);
     muList=cell(nfold,1);
 
     %% nfold cross validation of base learner
-    for k=1:nfold
+    for k=kth_fold
         paramsIn.mlloss         = 0;        % assign loss to microlabels(0) edges(1)
         paramsIn.profiling      = 1;        % profile (test during learning)
         paramsIn.epsilon        = mmcrf_g;        % stopping criterion: minimum relative duality gap
@@ -199,14 +204,14 @@ function run_RSTA(filename,graph_type,t,isTest)
 
     
     % auc & roc random model
-    [acc,vecacc,pre,rec,f1,auc1,auc2]=get_performance(Y,(Ypred==1),YpredVal);
+    [acc,vecacc,pre,rec,f1,auc1,auc2]=get_performance(Y(Itest,:),(Ypred(Itest,:)==1),YpredVal(Itest));
     perf = [acc,vecacc,pre,rec,f1,auc1,auc2]
     
     %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
     save(sprintf('../outputs/%s.mat', paramsIn.filestem), 'perf','Ypred', 'YpredVal', 'running_times', 'muList');
     system(sprintf('mv /var/tmp/%s.log ../outputs/', suffix));
 
-    if isTest
+    if ~isTest
         exit
     end
 end

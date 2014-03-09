@@ -71,7 +71,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MAX=64;
     end
     
-    
+    kappa_decrease_flags = zeros(1,m);
     kappa=kappa_INIT;
     
     
