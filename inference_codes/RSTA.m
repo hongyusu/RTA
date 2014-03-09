@@ -996,24 +996,75 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     end
     
     %% compute top '1' for all tree
-    for i=1:size(Y,1)
-        if sum(sum(Y_kappa_val((i:size(Y,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1)>=tol))==kappa*T_size
-            kappa_decrease_flag = 1;
-            Ypred(i,:) = -1*ones(1,size(Y,2));
-        else
-            [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = ...
-                find_worst_violator(...
-                Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
-                Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:),[]);
+    MATLABPAR = 1;
+    if MATLABPAR == 1
+        input_labels = cell(1,size(Y,1));
+        input_scores = cell(1,size(Y,1));
+        for i=1:size(Y,1)
+            input_labels{i} = Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:);
+            input_scores{i} = Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:);
         end
-%         if ~kappa_decrease_flag
-%             [Ypred(i,:),YpredVal(i,:)] = majority_voting(...
-%             Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
-%             Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:),...
-%             size(Y,2));
-%         end
-
+        
+        if matlabpool('size') == 0
+            matlabpool open;
+        end
+        num_partition = matlabpool('size');
+        ii=1;
+        start_position{ii}=1;
+        while start_position{ii} + ceil(size(Y,1)/num_partition) < size(Y,1)
+            ii=ii+1;
+            start_position{ii}=start_position{ii-1}+ceil(size(Y,1)/num_partition);
+        end
+        start_position{ii+1} = size(Y,1)+1;
+        par_Ypred = cell(size(start_position,2)-1);
+        par_YpredVal = cell(size(start_position,2)-1);
+        parfor partition_i = 1:(size(start_position,2)-1)
+            training_i_range = [start_position{partition_i}:(start_position{partition_i+1}-1)];
+            i_Ypred = zeros(size(training_i_range,1),size(Y,2));
+            i_YpredVal = zeros(size(training_i_range,1),1);
+            for training_i=training_i_range
+                if sum(sum(input_scores{training_i}-input_scores{training_i}(1)>=tol))==kappa*T_size
+                    kappa_decrease_flag = 1;
+                    i_Ypred(training_i-training_i_range(1)+1,:) = -1*ones(1,size(Y,2));
+                else
+                    [i_Ypred(training_i-training_i_range(1)+1,:),...
+                        i_YpredVal(training_i-training_i_range(1)+1,:),...
+                        kappa_decrease_flag] = ...
+                        find_worst_violator(input_labels{training_i},input_scores{training_i},[]);
+                end
+            end
+            par_Ypred{partition_i} = i_Ypred;
+            par_YpredVal{partition_i} = i_YpredVal;
+        end
+        for partition_i = 1:(size(start_position,2)-1)
+            training_i_range = [start_position{partition_i}:(start_position{partition_i+1}-1)];
+            Ypred(training_i_range,:) = par_Ypred{partition_i};
+            YpredVal(training_i_range,:) = par_YpredVal{partition_i};
+        end
+    else
+        for i=1:size(Y,1)
+            if sum(sum(Y_kappa_val((i:size(Y,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1)>=tol))==kappa*T_size
+                kappa_decrease_flag = 1;
+                Ypred(i,:) = -1*ones(1,size(Y,2));
+            else
+                [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = ...
+                    find_worst_violator(...
+                    Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
+                    Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:),[]);
+            end
+        end
+%         parfor i=1:size(Y,1)
+%             pause(0.000);
+%             [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = find_worst_violator(input_labels{i},input_scores{i},[]);
+%             if ~kappa_decrease_flag
+%                 [Ypred(i,:),YpredVal(i,:)] = majority_voting(...
+%                 input_labels{i},...
+%                 input_scores{i},...
+%                 size(Y,2));
+%             end
+%         end        
     end
+
     
     return;
 end
@@ -1052,6 +1103,9 @@ function [Ypred,YpredVal] = par_compute_error(Y,Kx)
         input_labels{i} = Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:);
         input_scores{i} = Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:);
     end
+   
+    
+
     parfor i=1:size(Y,1)
         pause(0.000);
         [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = find_worst_violator(input_labels{i},input_scores{i},[]);

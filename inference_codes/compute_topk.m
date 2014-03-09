@@ -29,7 +29,8 @@ function [Ymax,YmaxVal,Gmax] = compute_topk(gradient,K,E)
     end
     
     %% iteration throught examples
-    if m>1
+    MATLABPAR=1;
+    if m>1 && MATLABPAR==1
         if matlabpool('size') == 0 % checking to see if my pool is already open
             matlabpool open;
         end
