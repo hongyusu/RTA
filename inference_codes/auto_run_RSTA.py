@@ -17,7 +17,7 @@ def singleRSTA(filename,graph_type,t,node,kth_fold):
     logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s' %( node,filename,graph_type,t,kth_fold))
   except:
     logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s' %( node,filename,graph_type,t,kth_fold))
-    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /home/group/urenzyme/workspace/colt2014/experiments/inference_codes/; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -nosplash -nodesktop -r "run_RSTA '%s' '%s' '%s' '0' '%s'" > /var/tmp/tmp_%s_%s_%s_f%s_RSTAr' """ % (node,filename,graph_type,t,kth_fold,filename,graph_type,t,kth_fold) )
+    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /home/group/urenzyme/workspace/colt2014/experiments/inference_codes/; rm -rf /var/tmp/.matlab; mkdir /var/tmp/.matlab; export MATLABPATH=/var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s'" > /var/tmp/tmp_%s_%s_%s_f%s_RSTAr' """ % (node,filename,graph_type,t,kth_fold,filename,graph_type,t,kth_fold) )
     logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s' %( node,filename,graph_type,t,kth_fold))
     time.sleep(5)
   pass
@@ -46,7 +46,7 @@ def run():
           jobs.append(p)
           p.start()
           time.sleep(2)
-      time.sleep(30*is_main_run)
+      time.sleep(10)
     time.sleep(600*is_main_run)
 
   for job in jobs:

@@ -25,6 +25,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global Smu_list;
     global T_size;  % number of trees
     global cc;      % regularization constant
+    global norm_const;
     global Kxx_mu_x_list;
     global kappa;   % K best
     global PAR;     % parallel compuing on matlab with matlabpool
@@ -57,6 +58,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
+    norm_const = 1/T_size/size(E_list{1},1);
     cc  = 1/T_size/size(E_list{1},1);
     %cc  = 1/T_size;
     mu_list = cell(T_size);
@@ -85,8 +87,10 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     profile_in_iteration = 1;
     
     %% initialization
+    
     optimizer_init;
     profile_init;
+    
 
 
     %% optimization
@@ -996,7 +1000,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     end
     
     %% compute top '1' for all tree
-    MATLABPAR = 1;
+    MATLABPAR = 0;
     if MATLABPAR == 1
         input_labels = cell(1,size(Y,1));
         input_scores = cell(1,size(Y,1));
