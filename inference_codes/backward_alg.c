@@ -6,6 +6,14 @@
 #include "omp.h"
 
 
+/* Implemented with C OpenMP library for multiple process.
+ *
+ * compile with:
+ *      mex backward_alg.c CFLAGS="\$CFLAGS -fopenmp" LDFLAGS="\$LDFLAGS -fopenmp" CC="/usr/local/bin/gcc -std=c99"
+ *
+ * use in MATLAB:
+ *      [Ymax_single, YmaxVal_single] = backward_alg(P_node, T_node, K, E, nlabel, node_degree)
+ */
 
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
@@ -210,7 +218,15 @@ int compare_structs (const void *a, const void *b)
     else if(struct_a->v > struct_b->v)
     {return -1;}
     else
-    {return 0;};
+    {return 0;}
+//     {
+//         if(struct_a->nrow > struct_b->nrow)
+//         {return 1;}
+//         else if(struct_a->nrow < struct_b->nrow)
+//         {return -1;}
+//         else
+//         {return 0;}
+//     };
 }
 
 

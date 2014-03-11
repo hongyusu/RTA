@@ -98,11 +98,9 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     
 
     
-    //printf("fadf ");
-    
-    
-    /* printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol); */
-    /* printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol); */
+    //printf("-->\n");
+    //printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
+    //printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
     
     /* LOOP THROUGHT KAPPA*/
     struct type_element_list * my_list;
@@ -142,7 +140,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 				{
 					cur_pos->val = cur_pos->val + Y_kappa_val[jj+ii*Y_kappa_val_nrow];
                     find_flag=1;
-                    /* printf("-->update %.2f %.2f\n", cur_pos->id, cur_pos->val); */
+                    //printf("-->update %.2f %.2f\n", cur_pos->id, cur_pos->val);
 					break;
 				}
                 if(cur_pos->next)
@@ -158,10 +156,9 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 				cur_pos->id = Y_kappa_ind[jj+ii*Y_kappa_val_nrow];
 				cur_pos->val = Y_kappa_val[jj+ii*Y_kappa_val_nrow];
 				cur_pos->next = NULL;
-                /* printf("-->add %.2f %.2f\n", cur_pos->id, cur_pos->val); */
+                //printf("-->add %.2f %.2f\n", cur_pos->id, cur_pos->val);
 			}
             /* ACCESS UPDATED VALUE */
-            
             if(max_val<cur_pos->val & cur_pos->id!=Y_ind)
             {
                 max_val = cur_pos->val;
@@ -169,7 +166,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 max_row = jj;
                 max_col = ii;
             }
-            /* printf("-----------%d %d %d %d %.2f %.2f %.2f\n\n", jj,ii,max_row,max_col,max_ind,max_val,theta); */
+            //printf("-----------%d %d %d %d %.2f %.2f %.2f\n\n", jj,ii,max_row,max_col,max_ind,max_val,theta); 
 		}
         if(max_val >= theta)
         {

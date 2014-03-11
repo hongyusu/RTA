@@ -141,9 +141,9 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold)
         E=[E,min(E')',max(E')'];E=E(:,3:4); % arrange head and tail
         E=sortrows(E,[1,2]); % sort by head and tail
         Elist{i}=RootTree(E); % put into cell array
-%         if i~=1
-%             Elist{i} = Elist{1};
-%         end
+        if i~=1
+            Elist{i} = Elist{1};
+        end
     end
     % pick up one random graph
     E=Elist{t};
