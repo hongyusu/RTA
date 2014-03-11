@@ -62,11 +62,10 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     mu_list = cell(T_size);
     
-    ii=2;
     if T_size <= 1
-        kappa_INIT=ii;
-        kappa_MIN=ii;
-        kappa_MAX=ii;
+        kappa_INIT=2;
+        kappa_MIN=2;
+        kappa_MAX=2;
     else
         kappa_INIT=64;
         kappa_MIN=4; 
