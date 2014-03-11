@@ -147,7 +147,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             end
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
-            
+            % update kappa
             if kappa_decrease_flags(xi)==0
                 kappa = min(kappa*2,kappa_MAX);
             else
@@ -179,12 +179,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Rmu_list=Rmu_list;
             best_Smu_list=Smu_list;
         end
-%         % update kappa
-%         if sum(kappa_decrease_flags)<=m*.75
-%             kappa = min(kappa*2,kappa_MAX);
-%         else
-%             kappa = max(ceil(kappa/2),kappa_MIN);
-%         end
         
     end
     
