@@ -30,9 +30,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global kappa;   % K best
     global PAR;     % parallel compuing on matlab with matlabpool
     global kappa_decrease_flags;  
-    global tol;
     global iter;
-    tol = 1e-8;
     
     if T_size >= 20
         PAR=0;
@@ -85,7 +83,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         Kxx_mu_x_list{t} = zeros(4*size(E_list{1},1),m);
     end
 
-    
+    iter=0; 
     profile_in_iteration = 1;
     
     %% initialization
@@ -112,7 +110,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     obj_list = zeros(1,T_size);
     prev_obj = 0;
-    iter=0; 
+    
     nflip=Inf;
     params.verbosity = 2;
     progress_made = 1;
@@ -155,6 +153,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             else
                 kappa = max(ceil(kappa/2),kappa_MIN);
             end
+
         end
         
         %obj_list
@@ -311,7 +310,7 @@ function compute_duality_gap
     global kappa;
     global norm_const_linear;
     global norm_const_quadratic;
-    global tol;
+    global iter;
     
     m=size(Kx_tr,1);
     Y=Y_tr;
@@ -340,7 +339,7 @@ function compute_duality_gap
     
     %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
-        if sum(sum(abs(Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1))<=tol))==kappa*T_size
+        if iter==0
             kappa_decrease_flag = 1;
             Ypred(i,:) = -1*ones(1,size(Y_tr,2));
         else
@@ -496,7 +495,6 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global Y_tr;
     global T_size;
     global params;
-    global tol;
     global iter;
     
     
@@ -537,19 +535,15 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 
     %% get worst violator from top K
     
-    if sum(sum(abs(Y_kappa_val-Y_kappa_val(1))<=tol)) == size(Y_kappa_val,1)*size(Y_kappa_val,2)
+    if iter==0
         Ymax = ones(1,l)*(-1);
         kappa_decrease_flag=1;
     else
         [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,Y_tr(x,:));
     end
-%     if x==41
-%         Y_kappa
-%         Y_kappa_val
-%         Ymax
-%         Y_tr(x,:)
-%         asf
-%     end
+    
+    
+
 
     if ~kappa_decrease_flag
 %         for i=1:size(Y_kappa_val,1)
@@ -661,16 +655,8 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     end
     tau = max(tau,0);
     
-%     if x==41
-%         Y_kappa
-%         Y_kappa_val
-%         Ymax
-%         tau
-%         asdfsa
-%     end
+        
     
-%     fprintf('%d->%.2f\n ',sum(Gmax>=G0),tau);
-%     fprintf('%d ',sum(Gmax>=G0));
     
     %% update for each tree
     delta_obj_list = zeros(1,T_size);
@@ -1004,7 +990,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
     global Ye_list;
     global mu_list;
     global kappa;
-    global tol;
+    global iter;
     Ypred = zeros(size(Y));
     YpredVal = zeros(size(Y,1),1);
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
@@ -1048,7 +1034,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
             i_Ypred = zeros(size(training_i_range,1),size(Y,2));
             i_YpredVal = zeros(size(training_i_range,1),1);
             for training_i=training_i_range
-                if sum(sum(abs(input_scores{training_i}-input_scores{training_i}(1))<=tol))==kappa*T_size
+                if iter==0
                     kappa_decrease_flag = 1;
                     i_Ypred(training_i-training_i_range(1)+1,:) = -1*ones(1,size(Y,2));
                 else
@@ -1068,7 +1054,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
         end
     else
         for i=1:size(Y,1)
-            if sum(sum(abs(Y_kappa_val((i:size(Y,1):size(Y_kappa_val,1)),:)-Y_kappa_val(i,1))<=tol))==kappa*T_size
+            if iter==0
                 kappa_decrease_flag = 1;
                 Ypred(i,:) = -1*ones(1,size(Y,2));
             else
@@ -1078,6 +1064,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
                     Y_kappa_val((i:size(Y_kappa,1)/T_size:size(Y_kappa_val,1)),:),[]);
             end
         end
+        
 %         parfor i=1:size(Y,1)
 %             pause(0.000);
 %             [Ypred(i,:),YpredVal(i,:),kappa_decrease_flag] = find_worst_violator(input_labels{i},input_scores{i},[]);
@@ -1225,6 +1212,7 @@ end
 %% initialize optimizer
 function optimizer_init
     clear;
+    clear iter;
     global T_size;
     global Rmu_list;
     global Smu_list;
