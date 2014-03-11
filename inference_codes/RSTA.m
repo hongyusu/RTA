@@ -139,6 +139,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         tmp_Kxx_mu_x_list = Kxx_mu_x_list;
         for xi = 1:m
         %for xi = randsample(1:m,ceil(m*0.2))
+        %for xi = (m+1)*rem(iter,2)+(-1)^rem(iter,2)*[1:m]
+            
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
@@ -648,7 +650,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         tau=0;
     end
     tau = max(tau,0);
-    
+
         
     
     
@@ -677,6 +679,11 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
+    end
+    
+    if x==0
+        
+        disp([iter,tau,sum(delta_obj_list),delta_obj_list])
     end
     
     return;

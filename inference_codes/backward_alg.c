@@ -61,7 +61,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     /* GET K BEST */
     /* start parallel region */
     mint kk;
-    //#pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(kk)
+    #pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(kk)
     //{
         for(kk=0; kk<K; kk++)
         {
