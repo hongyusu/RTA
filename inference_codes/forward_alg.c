@@ -8,6 +8,12 @@
 
 
 /* The gateway function 
+ *
+ *  call from MATLAB
+ *      [P_node,T_node] = forward_alg(training_gradient,K,E,nlabel,node_degree,max(max(node_degree)));
+ *  compile with
+ *      mex forward_alg.c
+ *
  * Input:
  *      gradient: positive gradient
  *      K:  kappa
