@@ -61,7 +61,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     /* GET K BEST */
     /* start parallel region */
     mint kk;
-    #pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(kk)
+    //#pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(kk)
     //{
         for(kk=0; kk<K; kk++)
         {
@@ -112,8 +112,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             Q_node[(tmp_M[kk].nrow+par*K) + tmp_M[kk].ncol*K*nlabel]=PICK;
             YmaxVal_single[kk] = tmp_M[kk].v;
             free(tmp_M);
+            //printf("-->\n");
             //printm(Q_node,P_node_nrow,P_node_ncol);
             //printm(T_node,P_node_nrow,P_node_ncol);
+            //printf("--|\n");
 
             /* EVERYTHING IS STANDARDIZE WE DO LOOP TRACE DOWN */
             par = -1;
@@ -218,15 +220,15 @@ int compare_structs (const void *a, const void *b)
     else if(struct_a->v > struct_b->v)
     {return -1;}
     else
-    {return 0;}
-//     {
-//         if(struct_a->nrow > struct_b->nrow)
-//         {return 1;}
-//         else if(struct_a->nrow < struct_b->nrow)
-//         {return -1;}
-//         else
-//         {return 0;}
-//     };
+    //{return 0;}
+    {
+        if(struct_a->nrow > struct_b->nrow)
+        {return 1;}
+        else if(struct_a->nrow < struct_b->nrow)
+        {return -1;}
+        else
+        {return 0;}
+    };
 }
 
 

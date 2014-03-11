@@ -416,7 +416,15 @@ int compare_structs (const void *a, const void *b)
     else if(struct_a->v > struct_b->v)
     {return -1;}
     else
-    {return 0;};
+    //{return 0;};
+    {
+        if(struct_a->i > struct_b->i)
+        {return 1;}
+        else if(struct_a->i < struct_b->i)
+        {return -1;}
+        else
+        {return 0;}
+    }
 }
 int compare_structs_is (const void *a, const void *b)
 {    

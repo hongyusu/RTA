@@ -525,18 +525,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         % find top k violator
         
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
-        [Ymax0,YmaxVal0] = compute_topk(gradient,4,E);
         
-        if sum(sum(Ymax==Ymax0(1,1:size(Ymax,2))))>0
-            x
-            E
-            reshape(gradient,4,9)
-        Ymax
-        YmaxVal
-        Ymax0
-        YmaxVal0
-        sadf
-        end
         
         
         % save resutls
@@ -554,13 +543,13 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     else
         [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,Y_tr(x,:));
     end
-    if x==41
-        Y_kappa
-        Y_kappa_val
-        Ymax
-        Y_tr(x,:)
-        asf
-    end
+%     if x==41
+%         Y_kappa
+%         Y_kappa_val
+%         Ymax
+%         Y_tr(x,:)
+%         asf
+%     end
 
     if ~kappa_decrease_flag
 %         for i=1:size(Y_kappa_val,1)
@@ -672,13 +661,13 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     end
     tau = max(tau,0);
     
-    if x==41
-        Y_kappa
-        Y_kappa_val
-        Ymax
-        tau
-        asdfsa
-    end
+%     if x==41
+%         Y_kappa
+%         Y_kappa_val
+%         Ymax
+%         tau
+%         asdfsa
+%     end
     
 %     fprintf('%d->%.2f\n ',sum(Gmax>=G0),tau);
 %     fprintf('%d ',sum(Gmax>=G0));
