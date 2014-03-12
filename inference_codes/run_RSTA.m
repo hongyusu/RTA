@@ -206,12 +206,12 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold)
     % auc & roc random model
     [acc,vecacc,pre,rec,f1,auc1,auc2]=get_performance(Y(Itest,:),(Ypred(Itest,:)==1),YpredVal(Itest));
     perf = [acc,vecacc,pre,rec,f1,auc1,auc2]
-    
+    if ~isTest
     %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
     save(sprintf('../outputs/%s.mat', paramsIn.filestem), 'perf','Ypred', 'YpredVal', 'running_times', 'muList');
     system(sprintf('mv /var/tmp/%s.log ../outputs/', suffix));
 
-    if ~isTest
+    
         exit
     end
 end

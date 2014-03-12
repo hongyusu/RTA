@@ -25,12 +25,15 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global Smu_list;
     global T_size;  % number of trees
     global norm_const_linear;
-    global norm_const_quadratic;
+    global norm_const_quadratic_list;
     global Kxx_mu_x_list;
     global kappa;   % K best
     global PAR;     % parallel compuing on matlab with matlabpool
     global kappa_decrease_flags;  
     global iter;
+    
+    l1norm = 0;
+    
     
     if T_size >= 20
         PAR=0;
@@ -58,7 +61,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Kxx_mu_x_list = cell(T_size, 1);
     
     norm_const_linear = 1/T_size/size(E_list{1},1);
-    norm_const_quadratic = 1/T_size;
+    norm_const_quadratic_list = zeros(1,T_size)+1/T_size;
     
     mu_list = cell(T_size);
     
@@ -67,9 +70,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MIN=2;
         kappa_MAX=2;
     else
-        kappa_INIT=64;
+        kappa_INIT=128;
         kappa_MIN=4; 
-        kappa_MAX=64;
+        kappa_MAX=128;
     end
     
     kappa_decrease_flags = zeros(1,m);
@@ -132,13 +135,21 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             )
         opt_round = opt_round + 1;
         
+        % update lambda / quadratic term
+        if iter>0 && l1norm==1
+            for t=1:T_size
+                Kmu_tmp = compute_w_phi_e(Kx_tr,E_list{t},Ye_list{t},mu_list{t});
+                Kmu_tmp = reshape(Kmu_tmp,1,size(Kmu_tmp,1)*size(Kmu_tmp,2));
+                mu_tmp = reshape(mu_list{t},1,size(mu_list{t},1)*size(mu_list{t},2));
+                norm_const_quadratic_list(t) = sqrt(Kmu_tmp*mu_tmp'*norm_const_quadratic_list(t)/2);
+            end
+            norm_const_quadratic_list = norm_const_quadratic_list /  sum(norm_const_quadratic_list);
+        end
+            
         % iterate over examples 
         iter = iter +1;   
         kappa_decrease_flags = zeros(1,m);
-        tmp_Kxx_mu_x_list = Kxx_mu_x_list;
         for xi = 1:m
-        %for xi = randsample(1:m,ceil(m*0.2))
-        %for xi = (m+1)*rem(iter,2)+(-1)^rem(iter,2)*[1:m]
             
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
@@ -154,7 +165,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             else
                 kappa = max(ceil(kappa/2),kappa_MIN);
             end
-
         end
         
         %obj_list
@@ -304,7 +314,7 @@ function compute_duality_gap
     global obj;
     global kappa;
     global norm_const_linear;
-    global norm_const_quadratic;
+    global norm_const_quadratic_list;
     global iter;
     
     m=size(Kx_tr,1);
@@ -325,7 +335,7 @@ function compute_duality_gap
         Kmu_list_local{t} = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
         Kmu_list_local{t} = reshape(Kmu_list_local{t},4,size(E,1)*m);
         Kmu = Kmu_list_local{t};
-        gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic*Kmu;
+        gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu;
         gradient = gradient_list_local{t};
         [Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
@@ -388,7 +398,7 @@ function par_compute_duality_gap
     global obj;
     global kappa;
     global norm_const_linear;
-    global norm_const_quadratic;
+    global norm_const_quadratic_list;
     
     m=size(Kx_tr,1);
     Y=Y_tr;
@@ -413,7 +423,7 @@ function par_compute_duality_gap
         Kmu_list_local{t} = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
         Kmu_list_local{t} = reshape(Kmu_list_local{t},4,size(E,1)*m);
         Kmu = Kmu_list_local{t};
-        gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic*Kmu;
+        gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu;
         gradient = gradient_list_local{t};
         [Y_tmp{t},Y_tmp_val{t}] = compute_topk(gradient,kappa,E);
     end
@@ -484,7 +494,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global Smu_list;
     global Kxx_mu_x_list;
     global norm_const_linear;
-    global norm_const_quadratic;
+    global norm_const_quadratic_list;
     global l;
     global Kx_tr;
     global Y_tr;
@@ -512,7 +522,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         % compute the quantity for tree t
         Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         Kmu_x = Kmu_x_list_local{t};
-        gradient_list_local{t} =  norm_const_linear*loss - norm_const_quadratic*Kmu_x;    % current gradient    
+        gradient_list_local{t} =  norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu_x;    % current gradient    
         gradient = gradient_list_local{t};
         
         % find top k violator
@@ -540,7 +550,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
 
 
-    if ~kappa_decrease_flag
+    if ~kappa_decrease_flag && 0
 %         for i=1:size(Y_kappa_val,1)
 %             for j = 1:size(Y_kappa_val,2)
 %                 s = strrep(sprintf('%d ',(Y_kappa(i,((j-1)*l+1):(j*l))+1)/2),' ','');
@@ -633,7 +643,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
-        denomi(t) = norm_const_quadratic*Kmu_d' * mu_d;
+        denomi(t) = norm_const_quadratic_list(t)*Kmu_d' * mu_d;
         
     end
     
@@ -666,7 +676,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu_d = mu_d_list{t};
         Kmu_d = Kmu_d_list{t};
         %
-        delta_obj_list(t) = gradient'*mu_d*tau - norm_const_quadratic*tau^2/2*mu_d'*Kmu_d;
+        delta_obj_list(t) = gradient'*mu_d*tau - norm_const_quadratic_list(t)*tau^2/2*mu_d'*Kmu_d;
         mu = mu + tau*mu_d;
         Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
         % update Smu Rmu
@@ -678,11 +688,6 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
-    end
-    
-    if x==0
-        
-        disp([iter,tau,sum(delta_obj_list),delta_obj_list])
     end
     
     return;
@@ -702,7 +707,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
     global Smu_list;
     global Kxx_mu_x_list;
     global norm_const_linear;
-    global norm_const_quadratic;
+    global norm_const_quadratic_list;
     global l;
     global Kx_tr;
     global Y_tr;
@@ -728,7 +733,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         % compute the quantity for tree t
         Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
         Kmu_x = Kmu_x_list_local{t};
-        gradient_list_local{t} =  norm_const_linear*loss - norm_const_quadratic*Kmu_x;    % current gradient    
+        gradient_list_local{t} =  norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu_x;    % current gradient    
         gradient = gradient_list_local{t};
         % find top k violator
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
@@ -801,7 +806,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
-        denomi(t) = norm_const_quadratic*Kmu_d' * mu_d;
+        denomi(t) = norm_const_quadratic_list(t)*Kmu_d' * mu_d;
 
         
     end
@@ -827,7 +832,7 @@ function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent
         mu_d = mu_d_list{t};
         Kmu_d = Kmu_d_list{t};
         % 
-        delta_obj_list(t) = gradient'*mu_d*tau - norm_const_quadratic*tau^2/2*mu_d'*Kmu_d;
+        delta_obj_list(t) = gradient'*mu_d*tau - norm_const_quadratic_list(t)*tau^2/2*mu_d'*Kmu_d;
         mu = mu + tau*mu_d;
         Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
         % update Smu Rmu
@@ -1181,7 +1186,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
             u = u + 1;
             loss(u,:) = reshape((Te1 ~= u_1).*NodeDegree(E(:,1),:)+(Te2 ~= u_2).*NodeDegree(E(:,2),:),m*size(E,1),1);
         end
-    end    
+    end     
     loss = reshape(loss,4*size(E,1),m);
       
     Ye = reshape(loss==0,4,size(E,1)*m);
