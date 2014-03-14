@@ -136,15 +136,15 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         opt_round = opt_round + 1;
         
         % update lambda / quadratic term
+        
         if iter>0 && l1norm==1
             for t=1:T_size
-                Kmu_tmp = compute_w_phi_e(Kx_tr,E_list{t},Ye_list{t},mu_list{t});
+                Kmu_tmp = compute_Kmu(Kx_tr,mu_list{t},E_list{t},ind_edge_val_list{t});
                 Kmu_tmp = reshape(Kmu_tmp,1,size(Kmu_tmp,1)*size(Kmu_tmp,2));
                 mu_tmp = reshape(mu_list{t},1,size(mu_list{t},1)*size(mu_list{t},2));
                 norm_const_quadratic_list(t) = sqrt(Kmu_tmp*mu_tmp'*norm_const_quadratic_list(t)/2);
             end
-            norm_const_quadratic_list = norm_const_quadratic_list /  sum(norm_const_quadratic_list);
-            disp(norm_const_quadratic_list)
+            norm_const_quadratic_list = norm_const_quadratic_list /  sum(norm_const_quadratic_list);    
         end
         
         % iterate over examples 
@@ -338,18 +338,15 @@ function compute_duality_gap
         Kmu = Kmu_list_local{t};
         gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu;
         gradient = gradient_list_local{t};
-        
-%         
-%         l=size(E,1)+1;
-%         node_degree = zeros(1,l);
-%         for i=1:l
-%             node_degree(i) = sum(sum(E==i));
-%         end
-%         in_gradient = reshape(gradient,numel(gradient),1);
-%         disp('duality gap --->')
-%         [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
-%         disp('duality gap ---|')
-        [Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
+                 
+        l=size(E,1)+1;
+        node_degree = zeros(1,l);
+        for i=1:l
+            node_degree(i) = sum(sum(E==i));
+        end
+        in_gradient = reshape(gradient,numel(gradient),1);
+        [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
+        %[Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
         
         
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
@@ -911,6 +908,7 @@ function profile_update
     global obj;
     global PAR;
     global primal_ub;
+    global norm_const_quadratic_list;
     m = size(Ye,2);
     tm = cputime;
     print_message(sprintf('tm: %d  iter: %d obj: %f mu: max %f min %f dgap: %f',...
@@ -957,7 +955,7 @@ function profile_update
 
         running_time = tm-profile.start_time;
         sfile = sprintf('/var/tmp/Ypred_%s.mat',params.filestem);
-        save(sfile,'Ypred_tr','Ypred_ts','params','running_time');
+        save(sfile,'Ypred_tr','Ypred_ts','params','running_time','norm_const_quadratic_list');
         Ye = reshape(Ye,4*size(E,1),m);
     end
 end
@@ -1033,7 +1031,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
         mu = mu_list{t};
         w_phi_e = compute_w_phi_e(Kx,E,Ye,mu);
         
-        %[Y_tmp,Y_tmp_val] = compute_topk(w_phi_e,kappa,E);
+        
         l=size(E,1)+1;
         node_degree = zeros(1,l);
         for i=1:l
@@ -1041,6 +1039,7 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
         end
         w_phi_e = reshape(w_phi_e,size(w_phi_e,1)*size(w_phi_e,2),1);
         [Y_tmp,Y_tmp_val] = compute_topk_omp(w_phi_e,kappa,E,node_degree);
+        %[Y_tmp,Y_tmp_val] = compute_topk(w_phi_e,kappa,E);
 
         
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
