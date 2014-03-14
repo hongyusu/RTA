@@ -19,6 +19,7 @@
  */
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
+    //printf("--> in to worst\n");
     #define IN_Y_kappa          prhs[0]
     #define IN_Y_kappa_val      prhs[1]
     #define IN_Y                prhs[2]
@@ -58,11 +59,15 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     OUT_break_flag = mxCreateDoubleScalar(1);
     Ymax = mxGetPr(OUT_Ymax);
 
-    mxArray * mat_Y_kappa_ind;
-    double *Y_kappa_ind;
-    mat_Y_kappa_ind = mxCreateDoubleMatrix(Y_kappa_val_nrow, Y_kappa_val_ncol,mxREAL);
-    Y_kappa_ind = mxGetPr(mat_Y_kappa_ind);
+    double * Y_kappa_ind;
+    Y_kappa_ind = (double *) malloc (sizeof(double) * Y_kappa_val_nrow* Y_kappa_val_ncol);
+//     mxArray * mat_Y_kappa_ind;
+//     double *Y_kappa_ind;
+//     mat_Y_kappa_ind = mxCreateDoubleMatrix(Y_kappa_val_nrow, Y_kappa_val_ncol,mxREAL);
+//     Y_kappa_ind = mxGetPr(mat_Y_kappa_ind);
     /* ASSIGN DECIMAL TO EACH BINARY MULTILABEL */
+        
+
     for(mint ii=0;ii<Y_kappa_nrow;ii++)
     {
         for(mint jj=0;jj<Y_kappa_val_ncol;jj++)
@@ -80,6 +85,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             }
         }
     }
+    
     /* TRUE */
     double Y_ind;
     Y_ind = -1;
@@ -98,7 +104,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     
 
     
-    //printf("-->\n");
+    //printf("--> middle\n");
     //printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
     //printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
     
@@ -109,8 +115,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     cur_pos=NULL;
     double max_val = -1000000000;
     double max_ind = -1;
-    mint max_row;
-    mint max_col;
+    mint max_row=0;
+    mint max_col=0;
 
     for(mint ii=0;ii<Y_kappa_val_ncol;ii++)
     {
@@ -173,8 +179,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             break_flag = 1;
             break;
         }
+        
     }
     /* DESTROY TEMPORATORY POINTER SPACE */
+    
     while(my_list)
     {
         cur_pos = my_list;
@@ -183,19 +191,28 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     }  
     
     
-    mxDestroyArray(mat_Y_kappa_ind);
+    //mxDestroyArray(mat_Y_kappa_ind);
+    free(Y_kappa_ind);
     
     /* COLLECT RESULTS */
     *(mxGetPr(OUT_YmaxVal)) = max_val;
     *(mxGetPr(OUT_break_flag)) = break_flag;
     
+//     printf("--> in to worst1\n");
+//     printf("%d %d %d\n",mxGetN(OUT_Ymax),mxGetN(IN_Y_kappa),nlabel);
+//     printf("%d %d \n",max_row,max_col);
+//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     
     for(mint ii=0;ii<nlabel;ii++)
     {
 //         printf("%d %d %d %d\n",max_row,max_col,max_row,(max_col*nlabel+ii)*Y_kappa_nrow); 
         Ymax[ii] = Y_kappa[max_row+(max_col*nlabel+ii)*Y_kappa_nrow];
     }
     
+    
     /* printf("%d %d %.2f %.2f\n", max_row, max_col,max_ind,max_val); */
+    //printf("--| out of worst\n");
 }
 
 

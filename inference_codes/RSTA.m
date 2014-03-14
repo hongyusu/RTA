@@ -144,8 +144,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
                 norm_const_quadratic_list(t) = sqrt(Kmu_tmp*mu_tmp'*norm_const_quadratic_list(t)/2);
             end
             norm_const_quadratic_list = norm_const_quadratic_list /  sum(norm_const_quadratic_list);
+            disp(norm_const_quadratic_list)
         end
-            
+        
         % iterate over examples 
         iter = iter +1;   
         kappa_decrease_flags = zeros(1,m);
@@ -337,7 +338,20 @@ function compute_duality_gap
         Kmu = Kmu_list_local{t};
         gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu;
         gradient = gradient_list_local{t};
+        
+%         
+%         l=size(E,1)+1;
+%         node_degree = zeros(1,l);
+%         for i=1:l
+%             node_degree(i) = sum(sum(E==i));
+%         end
+%         in_gradient = reshape(gradient,numel(gradient),1);
+%         disp('duality gap --->')
+%         [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
+%         disp('duality gap ---|')
         [Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
+        
+        
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
     end
@@ -528,6 +542,17 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         % find top k violator
         
         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
+        node_degree = zeros(1,l);
+        for i=1:l
+            node_degree(i) = sum(sum(E==i));
+        end
+        [Ymax0,YmaxVal0] = compute_topk_omp(gradient,kappa,E,node_degree);
+%          
+        if sum(Ymax~=Ymax0)>0 & iter >1
+            [Ymax;Ymax0]
+            [YmaxVal;YmaxVal0]
+            dsfadf
+        end
         
         
         
@@ -535,6 +560,8 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Y_kappa(t,:) = Ymax;
         Y_kappa_val(t,:) = YmaxVal;
     end
+    
+    
     
     
 
@@ -546,9 +573,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     else
         [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,Y_tr(x,:));
     end
-    
-    
-
+     
 
     if ~kappa_decrease_flag && 0
 %         for i=1:size(Y_kappa_val,1)
@@ -659,6 +684,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         tau=0;
     end
     tau = max(tau,0);
+    
 
         
     
@@ -1006,7 +1032,17 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
         Ye = Ye_list{t};
         mu = mu_list{t};
         w_phi_e = compute_w_phi_e(Kx,E,Ye,mu);
-        [Y_tmp,Y_tmp_val] = compute_topk(w_phi_e,kappa,E);
+        
+        %[Y_tmp,Y_tmp_val] = compute_topk(w_phi_e,kappa,E);
+        l=size(E,1)+1;
+        node_degree = zeros(1,l);
+        for i=1:l
+            node_degree(i) = sum(sum(E==i));
+        end
+        w_phi_e = reshape(w_phi_e,size(w_phi_e,1)*size(w_phi_e,2),1);
+        [Y_tmp,Y_tmp_val] = compute_topk_omp(w_phi_e,kappa,E,node_degree);
+
+        
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
     end

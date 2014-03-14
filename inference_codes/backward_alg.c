@@ -53,6 +53,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     /* OTHER */
     int P_node_nrow = mxGetM(IN_P_node);
     int P_node_ncol = mxGetN(IN_P_node);
+    //printm(T_node,P_node_nrow,P_node_ncol);
     
     
     //printf("P_node add %p\nQ_node %p\nnode_degree %p\n", P_node,T_node,E,node_degree);
@@ -61,7 +62,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     /* GET K BEST */
     /* start parallel region */
     mint kk;
-    #pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(kk)
+    //#pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(kk)
     //{
         for(kk=0; kk<K; kk++)
         {
@@ -112,10 +113,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             Q_node[(tmp_M[kk].nrow+par*K) + tmp_M[kk].ncol*K*nlabel]=PICK;
             YmaxVal_single[kk] = tmp_M[kk].v;
             free(tmp_M);
-            //printf("-->\n");
-            //printm(Q_node,P_node_nrow,P_node_ncol);
-            //printm(T_node,P_node_nrow,P_node_ncol);
-            //printf("--|\n");
+//             printf("++-->%d\n",kk);
+//             printm(Q_node,P_node_nrow,P_node_ncol);
+//             printm(T_node,P_node_nrow,P_node_ncol);
+//             printf("++--|\n");
 
             /* EVERYTHING IS STANDARDIZE WE DO LOOP TRACE DOWN */
             par = -1;
@@ -184,7 +185,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 }
                 free(cs);
             }
-
+            //printf("++->\n");
+            //printm(Y,1,10);
             for(mint ii=0;ii<nlabel;ii++)
             {Ymax_single[kk*nlabel+ii] = Y[ii]*2-1;}
 
