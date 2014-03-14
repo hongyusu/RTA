@@ -30,7 +30,7 @@ def run():
   is_main_run=0
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
-  filenames=['toy10','toy50','emotions','yeast','scene']
+  filenames=['toy10','toy50']#,'emotions','yeast','scene']
   n=0
   for filename in filenames:
     for graph_type in ['tree']:
@@ -53,10 +53,11 @@ def run():
       time.sleep(300*is_main_run) # lnorm
       pass
     time.sleep(300*is_main_run) # tree
-    for job in jobs:
-      job.join()
-      pass
     pass
+  for job in jobs:
+    job.join()
+    pass
+
 
 
 run()

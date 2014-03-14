@@ -177,7 +177,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
         if isTest
             paramsIn.extra_iter     = 0;        % extra iteration through examples when optimization is over
         else
-            paramsIn.extra_iter     = 1;        % extra iteration through examples when optimization is over
+            paramsIn.extra_iter     = 0;        % extra iteration through examples when optimization is over
         end
         paramsIn.filestem       = sprintf('%s',suffix);		% file name stem used for writing output
 
