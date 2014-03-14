@@ -84,7 +84,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     }
     
     // OMP LOOP THROUGH EXAMPLES
-    int nn = 10;
+    int nn = 50;
     int nworker = (mm-2)/nn;
     //printf("data: %d worker: %d\n", mm,nworker);
     if(nworker <1){nworker=1;};
@@ -103,7 +103,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
     int num_cores = omp_get_num_procs();
     omp_set_dynamic(0);
-    omp_set_num_threads(2*num_cores);
+    omp_set_num_threads(num_cores);
     #pragma omp parallel for private(share_i)
     for(share_i=0;share_i<nworker;share_i++)
     {

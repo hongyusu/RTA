@@ -58,7 +58,7 @@ double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, i
     // START PARALLEL REGION
     int num_cores = omp_get_num_procs();
     omp_set_dynamic(0);
-    omp_set_num_threads(2*num_cores);
+    omp_set_num_threads(num_cores);
     #pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(para_i)
     for(para_i=0; para_i<num_share; para_i++)
     {   

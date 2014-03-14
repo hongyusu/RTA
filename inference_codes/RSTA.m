@@ -32,7 +32,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global kappa_decrease_flags;  
     global iter;
     
-    l1norm = 0;
     
     
     if T_size >= 20
@@ -44,9 +43,12 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global previous;
     previous=[];
 
-    
-    
     params=paramsIn;
+    if params.l_norm == 1
+        l1norm = 1;
+    else
+        l1norm = 0;
+    end
     Kx_tr=dataIn.Kx_tr;
     Kx_ts=dataIn.Kx_ts;
     Y_tr=dataIn.Y_tr;
@@ -126,7 +128,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     best_Kxx_mu_x_list=Kxx_mu_x_list;
     best_Rmu_list=Rmu_list;
     best_Smu_list=Smu_list;
-    
+    best_norm_const_quadratic_list = norm_const_quadratic_list;
     %% loop through examples
     while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
             progress_made == 1 && ...                   % make progress
@@ -190,6 +192,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             best_Kxx_mu_x_list=Kxx_mu_x_list;
             best_Rmu_list=Rmu_list;
             best_Smu_list=Smu_list;
+            best_norm_const_quadratic_list = norm_const_quadratic_list;
         end
         
     end
@@ -203,6 +206,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         Kxx_mu_x_list = best_Kxx_mu_x_list;
         Rmu_list = best_Rmu_list;
         Smu_list = best_Smu_list;
+        norm_const_quadratic_list = best_norm_const_quadratic_list;
         for xi=1:m
             if PAR
                 [~,~] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
@@ -229,6 +233,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Kxx_mu_x_list = best_Kxx_mu_x_list;
     Rmu_list = best_Rmu_list;
     Smu_list = best_Smu_list;
+    norm_const_quadratic_list = best_norm_const_quadratic_list;
     profile_update;
     
     

@@ -2,7 +2,7 @@
 %%
 % running MMCRF on one dataset with random tree / random pair graph as
 % output graph structure connecting multiple output labels
-function run_RSTA(filename,graph_type,t,isTest,kth_fold)
+function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
 % 
 % mex forward_alg.c
 % mex backward_alg.c
@@ -26,17 +26,21 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold)
     if nargin < 5
         kth_fold='1';
     end
+    if nargin < 6
+        l_norm='2'
+    end
     
     % set random number seed
     rand('twister', 0);
     % suffix for write result files
-    suffix=sprintf('%s_%s_%s_f%s_RSTAr', filename,graph_type,t,kth_fold);
+    suffix=sprintf('%s_%s_%s_f%s_l%s_RSTAr', filename,graph_type,t,kth_fold,l_norm);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     %
     t=eval(t);
     isTest = eval(isTest);
     kth_fold = eval(kth_fold);
+    l_norm = eval(l_norm);
     % get search path
     addpath('../shared_scripts/');  
     % get current hostname
@@ -169,6 +173,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold)
         paramsIn.maxiter        = mmcrf_i;        % maximum number of iterations in the outer loop
         paramsIn.verbosity      = 1;
         paramsIn.debugging      = 3;
+        paramsIn.l_norm         = l_norm;
         if isTest
             paramsIn.extra_iter     = 0;        % extra iteration through examples when optimization is over
         else
