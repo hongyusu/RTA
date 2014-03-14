@@ -203,28 +203,15 @@ double * forward_alg_omp(double * gradient, int K, double * E, int l, double * n
 }
 
 
-
-//double * LinearMaxSum(mxArray * M_array, int current_node_degree)
 double * LinearMaxSum(double * M, int M_nrow, int M_ncol, int current_node_degree)
 {
-    //printf("--->start\n");
-    //printf("M\n");printm(M,M_nrow,M_ncol);
-    /* INPUT */
-//     double * M = mxGetPr(M_array);
-//     int M_nrow = mxGetM(M_array);
-//     int M_ncol = mxGetN(M_array);
-    /* OUTPUT */
     double * res;
-    //res = (double *) malloc (sizeof(double) * M_nrow * (M_ncol+1));
     res = (double *) calloc (sizeof(double), M_nrow * (M_ncol+1));
-//     mxArray * res_array;
-//     res_array = mxCreateDoubleMatrix(M_nrow,M_ncol+1,mxREAL);
-//     double * res = mxGetPr(res_array);
+
     /* NO CHILDREN */
     if(current_node_degree-1==0)
     {
         res[0+M_ncol*M_nrow]=1;
-        //printf("--->stop\n");
         return res;
     }
     
