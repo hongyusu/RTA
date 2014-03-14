@@ -545,12 +545,12 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         end
         [Ymax0,YmaxVal0] = compute_topk_omp(gradient,kappa,E,node_degree);
 %          
-        if sum(Ymax~=Ymax0)>0 & iter >1
-            [Ymax;Ymax0]
-            [YmaxVal;YmaxVal0]
-            dsfadf
-        end
-        
+%         if sum(Ymax~=Ymax0)>0 & iter >1
+%             [Ymax;Ymax0]
+%             [YmaxVal;YmaxVal0]
+%             dsfadf
+%         end
+%         
         
         
         % save resutls

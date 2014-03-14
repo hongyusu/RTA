@@ -1,9 +1,6 @@
 
-#include "matrix.h"
-#include "mex.h"
-#include "backward_alg_omp.h"
-#include "stdio.h"
-#include "omp.h"
+
+
 
 
 /* 
@@ -14,15 +11,31 @@
  * PART OF COMPUTE_TOPK_OMP
  */
 
-double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, int nlabel, double * node_degree, int max_node_degree)
+
+#include "matrix.h"
+#include "mex.h"
+#include "backward_alg_omp.h"
+#include "stdio.h"
+#include "omp.h"
+
+
+double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, int nlabel, double * in_node_degree, int max_node_degree)
 {
     double * Ymax_single;
     double * YmaxVal_single;
     Ymax_single = (double *) malloc (sizeof(double) * K*nlabel);
     YmaxVal_single = (double *) malloc (sizeof(double) * K);
-    node_degree[(int)(E[0]-1)] = node_degree[(int)(E[0]-1)] + 1; 
+    // ROW AND COLUMN INDEX
     int P_node_nrow = K*nlabel;
     int P_node_ncol = 2*(max_node_degree+1);
+    // NODE DEGREE
+    double * node_degree;
+    node_degree = (double *) malloc (sizeof(double)*nlabel);
+    for(int ii=0;ii<nlabel;ii++)
+    {node_degree[ii] = in_node_degree[ii];}
+    node_degree[(int)(E[0]-1)] = node_degree[(int)(E[0]-1)] + 1; 
+    
+    
     
     // GET K BEST MULTILABEL WITH
     int para_i;
@@ -42,17 +55,16 @@ double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, i
     }
     stop_pos[num_share-1]=K;
     
-//      for(int ii=0;ii<num_share;ii++)
-//      {printf("-->%d %d %d\n",start_pos[ii],stop_pos[ii],K);}
-
     // START PARALLEL REGION
-    //int kk;
-    //#pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(kk)
+    int num_cores = omp_get_num_procs();
+    omp_set_dynamic(0);
+    omp_set_num_threads(2*num_cores);
     #pragma omp parallel for shared(P_node,T_node,E,K,nlabel,node_degree,Ymax_single,YmaxVal_single) private(para_i)
     for(para_i=0; para_i<num_share; para_i++)
     {   
+        
+        //printf("id %d max %d num %d cpu %d\n", omp_get_thread_num(),omp_get_max_threads(),omp_get_num_threads(),omp_get_num_procs());
         for(int kk=start_pos[para_i]; kk<stop_pos[para_i]; kk++)
-        //for(kk=0;kk<K;kk++)
         {               
             //printf("%d %d %d\n",para_i,start_pos[para_i],stop_pos[para_i]);
             double * Y;
@@ -174,12 +186,9 @@ double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, i
     }
 
     /* END OF PARALLEL REGION */
-    node_degree[(int)(E[0]-1)] = node_degree[(int)(E[0]-1)] - 1; 
+    //node_degree[(int)(E[0]-1)] = node_degree[(int)(E[0]-1)] - 1; 
 
-    
-    //back_printm(YmaxVal_single,1,K);
-    //back_printm(Ymax_single,1,K*nlabel);
-    
+    // SAVE RESULTS
     double * results;
     results = (double *) malloc (sizeof(double)*K*(nlabel+1));
     for(int ii=0;ii<K*nlabel;ii++)
@@ -190,9 +199,10 @@ double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, i
     {
         results[ii+K*nlabel] = YmaxVal_single[ii];
     }
-    
-    free(Ymax_single);
-    free(YmaxVal_single);
+    // DESTROY POINTER SPACE
+    if(node_degree){free(node_degree);}
+    if(YmaxVal_single){free(YmaxVal_single);}
+    if(Ymax_single){free(Ymax_single);}
     
     return(results);
 }

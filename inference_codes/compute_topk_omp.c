@@ -84,7 +84,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     }
     
     // OMP LOOP THROUGH EXAMPLES
-    int nn = 100;
+    int nn = 10;
     int nworker = (mm-2)/nn;
     //printf("data: %d worker: %d\n", mm,nworker);
     if(nworker <1){nworker=1;};
@@ -100,69 +100,67 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     stop_pos[nworker-1]=mm;
     int share_i;
     
-    //#pragma omp parallel for private(share_i)
+
+    int num_cores = omp_get_num_procs();
+    omp_set_dynamic(0);
+    omp_set_num_threads(2*num_cores);
+    #pragma omp parallel for private(share_i)
     for(share_i=0;share_i<nworker;share_i++)
     {
-        //printf("--->%d %d %d\n",share_i, start_pos[share_i],stop_pos[share_i]);
-        int  tid = omp_get_thread_num();
-        
-    for(int training_i=start_pos[share_i];training_i<stop_pos[share_i];training_i++)
-    {
-        //printf("%d %d \n", share_i,training_i);
-        // GET TRAINING GRADIENT
-        double * training_gradient;
-        training_gradient = (double *) malloc (sizeof(double) * 4 * E_nrow);
-        //printm(gradient,36,1);
-        for(int ii=0;ii<E_nrow*4;ii++)
-        {training_gradient[ii] = gradient[ii+training_i*4*E_nrow];}
-        
-        // FORWARD ALGORITHM TO GET P_NODE AND T_NODE
-        double * results;
-        results = forward_alg_omp(training_gradient, K, E, nlabel, node_degree, max_node_degree);
-        double * P_node;
-        double * T_node;
-        P_node = (double *) malloc (sizeof(double) * K*nlabel*2*(max_node_degree+1));
-        T_node = (double *) malloc (sizeof(double) * K*nlabel*2*(max_node_degree+1));
-        for(int ii=0;ii<K*nlabel;ii++)
+        //printf("id %d max %d num %d cpu %d\n", omp_get_thread_num(),omp_get_max_threads(),omp_get_num_threads(),omp_get_num_procs());
+        for(int training_i=start_pos[share_i];training_i<stop_pos[share_i];training_i++)
         {
-            for(int jj=0;jj<2*(max_node_degree+1);jj++)
-            {
-                P_node[ii+jj*K*nlabel] = results[ii+jj*K*nlabel*2];
-            }
-        }
-        for(int ii=0;ii<K*nlabel;ii++)
-        {
-            for(int jj=0;jj<2*(max_node_degree+1);jj++)
-            {
-                T_node[ii+jj*K*nlabel] = results[ii+K*nlabel+jj*K*nlabel*2];
-            }
-        }
-        free(results);
+            // GET TRAINING GRADIENT
+            double * training_gradient;
+            training_gradient = (double *) malloc (sizeof(double) * 4 * E_nrow);
+            for(int ii=0;ii<E_nrow*4;ii++)
+            {training_gradient[ii] = gradient[ii+training_i*4*E_nrow];}
 
-        
-        // BACKWARD ALGORITHM TO GET MULTILABEL
-        results = backward_alg_omp(P_node, T_node, K, E, nlabel, node_degree, max_node_degree);
-        for(int ii=0;ii<K*nlabel;ii++)
-        {
-            Ymax[training_i+ii*mm] = results[ii];
-        }
-        for(int ii=0;ii<K;ii++)
-        {
-            YmaxVal[training_i+ii*mm] = results[ii+K*nlabel];
-        }
-        free(results);
+            // FORWARD ALGORITHM TO GET P_NODE AND T_NODE
+            double * results;
+            results = forward_alg_omp(training_gradient, K, E, nlabel, node_degree, max_node_degree);
+            double * P_node;
+            double * T_node;
+            P_node = (double *) malloc (sizeof(double) * K*nlabel*2*(max_node_degree+1));
+            T_node = (double *) malloc (sizeof(double) * K*nlabel*2*(max_node_degree+1));
+            for(int ii=0;ii<K*nlabel;ii++)
+            {
+                for(int jj=0;jj<2*(max_node_degree+1);jj++)
+                {
+                    P_node[ii+jj*K*nlabel] = results[ii+jj*K*nlabel*2];
+                }
+            }
+            for(int ii=0;ii<K*nlabel;ii++)
+            {
+                for(int jj=0;jj<2*(max_node_degree+1);jj++)
+                {
+                    T_node[ii+jj*K*nlabel] = results[ii+K*nlabel+jj*K*nlabel*2];
+                }
+            }
+            if(results){free(results);}
 
-        
-        free(T_node);
-        free(P_node);
-        free(training_gradient);
-    } 
-        
+            // BACKWARD ALGORITHM TO GET MULTILABEL
+            results = backward_alg_omp(P_node, T_node, K, E, nlabel, node_degree, max_node_degree);
+            for(int ii=0;ii<K*nlabel;ii++)
+            {
+                Ymax[training_i+ii*mm] = results[ii];
+            }
+            for(int ii=0;ii<K;ii++)
+            {
+                YmaxVal[training_i+ii*mm] = results[ii+K*nlabel];
+            }
+            if(results){free(results);}
+            
+            // DESTROY POINTER SPACE
+            if(T_node){free(T_node);}
+            if(P_node){free(P_node);}
+            if(training_gradient){free(training_gradient);}
+        }         
     }
     
     for(int ii=0;ii<K*mm;ii++)
     {YmaxVal[ii] = YmaxVal[ii]+min_gradient_val*(nlabel-1);}   
    
-    free(gradient);
+    if(gradient){free(gradient);}
 }
 
