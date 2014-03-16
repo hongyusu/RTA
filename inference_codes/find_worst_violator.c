@@ -76,15 +76,15 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             Y_kappa_ind[ii+jj*Y_kappa_nrow] = 0;
             for(mint kk=0;kk<nlabel;kk++)
             {
-                /* printf("%.2f %.2f\n",Y_kappa_ind[ii+jj*Y_kappa_nrow], Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]); */
                 double tmp=0;
                 if((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1)
                 {tmp=1;}
                 Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + tmp;
-                //Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + ((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1 ? 1:0);
             }
         }
     }
+    
+    //printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
     
     /* TRUE */
     double Y_ind;
