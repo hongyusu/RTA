@@ -329,7 +329,9 @@ function compute_duality_gap
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
     
-    %% get 'k' best prediction from each spanning tree
+    %% rewrite
+    %%
+    % get 'k' best prediction from each spanning tree
     Kmu_list_local = cell(1,T_size);
     gradient_list_local = cell(1,T_size);
     for t=1:T_size
@@ -357,6 +359,48 @@ function compute_duality_gap
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
     end
+    %%
+%     Kmu_list_local = cell(1,T_size);
+%     gradient_list_local = cell(1,T_size);
+%     node_degree_mat = zeros(T_size,size(E_list{1},1));
+%     gradient_mat = zeros(4*size(E_list{1},1)*size(Kx_tr,1),T_size);
+%     for t=1:T_size
+%         loss = loss_list{t};
+%         E = E_list{t};
+%         mu = mu_list{t};
+%         ind_edge_val = ind_edge_val_list{t};
+%         loss = reshape(loss,4,size(E,1)*m);
+%         Kmu_list_local{t} = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
+%         Kmu_list_local{t} = reshape(Kmu_list_local{t},4,size(E,1)*m);
+%         Kmu = Kmu_list_local{t};
+%         gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu;
+%         gradient = gradient_list_local{t};
+%                  
+%         l=size(E,1)+1;
+%         node_degree = zeros(1,l);
+%         for i=1:l
+%             node_degree(i) = sum(sum(E==i));
+%         end
+%         
+%         gradient_mat(:,t) = reshape(gradient,numel(gradient),1);
+%         node_degree(t,:) = node_degree
+%     end
+%     
+%     
+%     
+%         [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
+%         %[Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
+%         
+%         
+%         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
+%         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
+%     end
+    
+    %%
+    %% rewrite
+    %%
+    
+    
     
     %% get top '1' prediction by analyzing predictions from all trees
     for i=1:size(Y,1)
