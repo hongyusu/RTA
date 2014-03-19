@@ -27,18 +27,17 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run=0
+  is_main_run=1
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
-  filenames=['toy10','toy50']#,'emotions','yeast','scene']
+  filenames=['toy10','emotions','yeast','scene','enron','medical','toy50']
   n=0
-  for filename in filenames:
-    for graph_type in ['tree']:
-      for l_norm in ['1','2']:
-        for t in range(0,61,20):
-        #for t in [0]:	
-          if t==0:
-            t=1
+  for t in range(0,61,15):
+    if t==0:
+      t=1
+    for filename in filenames:
+      for graph_type in ['tree']:
+        for l_norm in ['1','2']:
           para_t="%d" % (t)
           for kth_fold in ['1','2','3','4','5']:
             node=cluster[n%len(cluster)]
@@ -48,11 +47,11 @@ def run():
             p.start()
             time.sleep(10) # fold
             pass
-        time.sleep(300) # t
-        pass
-      time.sleep(300*is_main_run) # lnorm
+          time.sleep(60) # l norm
+          pass
+      time.sleep(60*is_main_run) # file
       pass
-    time.sleep(300*is_main_run) # tree
+    time.sleep(300*is_main_run) # t
     pass
   for job in jobs:
     job.join()

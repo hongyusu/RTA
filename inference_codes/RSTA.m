@@ -72,9 +72,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MIN=2;
         kappa_MAX=2;
     else
-        kappa_INIT=128;
+        kappa_INIT=4;
         kappa_MIN=4; 
-        kappa_MAX=128;
+        kappa_MAX=4;
     end
     
     kappa_decrease_flags = zeros(1,m);
@@ -153,7 +153,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         iter = iter +1;   
         kappa_decrease_flags = zeros(1,m);
         for xi = 1:m
-            
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
@@ -169,6 +168,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
                 kappa = max(ceil(kappa/2),kappa_MIN);
             end
         end
+        %sum(kappa_decrease_flags)
         
         %obj_list
         progress_made = (obj >= prev_obj);  
@@ -617,7 +617,11 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Ymax = ones(1,l)*(-1);
         kappa_decrease_flag=1;
     else
-        [Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,Y_tr(x,:));
+        %[Ymax, ~, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,Y_tr(x,:));
+        [Ymax, ~, kappa_decrease_flag] = find_worst_violator_new(Y_kappa,Y_kappa_val,Y_tr(x,:));
+        
+        
+        
     end
      
 

@@ -32,6 +32,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     double * Y;
     double * Ymax;
     double break_flag=0;
+    double Y_ind;
     
     mint Y_kappa_nrow;
     mint Y_kappa_ncol;
@@ -65,41 +66,153 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 //     double *Y_kappa_ind;
 //     mat_Y_kappa_ind = mxCreateDoubleMatrix(Y_kappa_val_nrow, Y_kappa_val_ncol,mxREAL);
 //     Y_kappa_ind = mxGetPr(mat_Y_kappa_ind);
+    
+    
+    
     /* ASSIGN DECIMAL TO EACH BINARY MULTILABEL */
         
 
+//     for(mint ii=0;ii<Y_kappa_nrow;ii++)
+//     {
+//         for(mint jj=0;jj<Y_kappa_val_ncol;jj++)
+//         {
+//             /* printf("%d %d %d\n",ii,jj,nlabel); */
+//             Y_kappa_ind[ii+jj*Y_kappa_nrow] = 0;
+//             for(mint kk=0;kk<nlabel;kk++)
+//             {
+//                 double tmp=0;
+//                 if((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1)
+//                 {tmp=1;}
+//                 Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + tmp;
+//             }
+//         }
+//     }
+//     Y_ind = -1;
+//     if(Y_nrow>0)
+//     {
+//         Y_ind ++;
+//         for(mint kk=0;kk<nlabel;kk++)
+//         {
+//             double tmp = 0;
+//             if((Y[kk]+1)/2==1)
+//             {tmp=1;}
+//             Y_ind = Y_ind*2+tmp;
+//             //Y_ind = Y_ind*2 + ((Y[kk]+1)/2==1 ? 1:0);
+//         }
+//     }
+//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     printf("%.2f\n",Y_ind);
+
+    struct type_arr2id_list * arr2id_head;
+    struct type_arr2id_list * arr2id_curpos;
+    struct type_arr2id_list * arr2id_prevpos;
+    arr2id_head = NULL;
+    arr2id_curpos = NULL;
+    int num_uelement = 1;
     for(mint ii=0;ii<Y_kappa_nrow;ii++)
     {
         for(mint jj=0;jj<Y_kappa_val_ncol;jj++)
         {
-            /* printf("%d %d %d\n",ii,jj,nlabel); */
-            Y_kappa_ind[ii+jj*Y_kappa_nrow] = 0;
-            for(mint kk=0;kk<nlabel;kk++)
+            
+            double * tmp;
+            tmp = (double *) malloc (sizeof(double ) * nlabel);
+            for(int kk=0;kk<nlabel;kk++)
+            {tmp[kk] = Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow];}
+            
+            if(!arr2id_head)
             {
-                double tmp=0;
-                if((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1)
-                {tmp=1;}
-                Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + tmp;
+                Y_kappa_ind[ii+jj*Y_kappa_nrow] = num_uelement;
+                arr2id_head = (struct type_arr2id_list * ) malloc (sizeof(struct type_arr2id_list));
+                arr2id_head->arr = tmp;
+                arr2id_head->id = num_uelement;
+                //printf("\tadd %d", num_uelement);
+                arr2id_head->next=NULL;
+                num_uelement++;
+                continue;
+            }
+            
+            arr2id_curpos = arr2id_head;
+            int find=0;
+            while(arr2id_curpos)
+            {
+                int not_equ = 0;
+                for(int kk=0;kk<nlabel;kk++)
+                {
+                    if(tmp[kk]!=arr2id_curpos->arr[kk])
+                    {
+                        not_equ = 1;
+                        break;
+                    }
+                }
+                if(!not_equ)
+                {
+                    Y_kappa_ind[ii+jj*Y_kappa_nrow] = arr2id_curpos->id;
+                    find=1;
+                    break;
+                }
+                arr2id_prevpos = arr2id_curpos;
+                arr2id_curpos = arr2id_curpos->next;
+            }
+            // if the element is not found, add it to the list
+            arr2id_curpos = arr2id_prevpos;
+            if(!find)
+            {
+                Y_kappa_ind[ii+jj*Y_kappa_nrow] = num_uelement;
+                arr2id_curpos->next = (struct type_arr2id_list * ) malloc (sizeof(struct type_arr2id_list));
+                arr2id_curpos = arr2id_curpos->next;
+                arr2id_curpos->arr = tmp;
+                arr2id_curpos->id = num_uelement;
+                //printf("\tadd %d", num_uelement);
+                arr2id_curpos->next = NULL;
+                num_uelement++;
             }
         }
     }
     
-    //printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
-    
+//     arr2id_curpos = arr2id_head;
+//     while(arr2id_curpos)
+//     {
+//        printf("%.2f--",arr2id_curpos->id);
+//        arr2id_curpos = arr2id_curpos->next;
+//     }
+//     printf("link\n");
+     
     /* TRUE */
-    double Y_ind;
-    Y_ind = -1;
-    if(Y_nrow>0)
+    //printm(Y,1,nlabel);
+    Y_ind = 0.0;
+    arr2id_curpos = arr2id_head;
+    //printf("%.2f\n",Y_ind);
+    while(arr2id_curpos)
     {
-        Y_ind ++;
-        for(mint kk=0;kk<nlabel;kk++)
+        int not_equ = 0;
+        for(int kk=0;kk<nlabel;kk++)
         {
-            double tmp = 0;
-            if((Y[kk]+1)/2==1)
-            {tmp=1;}
-            Y_ind = Y_ind*2+tmp;
-            //Y_ind = Y_ind*2 + ((Y[kk]+1)/2==1 ? 1:0);
+            if(Y[kk]!=arr2id_curpos->arr[kk])
+            {
+                not_equ = 1;
+                break;
+            }
         }
+        if(!not_equ)
+        {
+            Y_ind = arr2id_curpos->id;
+            break;
+        }
+        arr2id_curpos = arr2id_curpos->next;
+    }
+    
+//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     printf("%.2f\n",Y_ind);
+//     printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     printf("---->\n");
+    
+    // destroy arr2id list
+    while(arr2id_head)
+    {
+        arr2id_curpos = arr2id_head;
+        arr2id_head = arr2id_head->next;
+        free(arr2id_curpos->arr);
+        free(arr2id_curpos);
     }
     
 

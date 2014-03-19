@@ -111,17 +111,22 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
 
     %% parameter selection
     % ues results from parameter selection, otherwise use fixed parameters
-    try
-        load(sprintf('../outputs/%s_%s_baselearner_parameters.mat',filename,graph_type));
-        mmcrf_c=selected_parameters(1);
-        mmcrf_g=selected_parameters(2);
-        mmcrf_i=selected_parameters(3);
-    catch err
-        disp(err)
-        mmcrf_c = 10;
-        mmcrf_g = -10000;%0.01;
-        mmcrf_i = 50;
+
+    para_n=11;
+    parameters=zeros(para_n,10);
+    for i=1:para_n
+        try
+            load(sprintf('../parameters/%s_%s_1_f%d_l2_i%d_RSTAp.mat',filename,graph_type,kth_fold,i));
+            parameters(i,:) = perf;
+        catch err
+            parameters(i,:) = [i,10,zeros(1,8)];
+        end
     end
+    parameters=sortrows(parameters,[3,2]);
+    mmcrf_c = parameters(para_n,2);
+    
+    mmcrf_g = -10000;%0.01;
+    mmcrf_i = 50;
     % display something
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
     
