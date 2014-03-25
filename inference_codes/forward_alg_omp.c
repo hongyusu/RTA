@@ -197,6 +197,8 @@ double * forward_alg_omp(double * gradient, int K, double * E, int l, double * n
             results[ii+K*l+jj*2*K*l] = T_node[ii+jj*K*l];
         }
     }
+    //printm(P_node,16,4);
+    //printm(T_node,16,4);
     free(P_node);
     free(T_node);
     return(results);

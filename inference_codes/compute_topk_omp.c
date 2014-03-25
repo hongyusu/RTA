@@ -6,6 +6,7 @@
 #include "forward_alg_omp.h"
 #include "stdio.h"
 #include "omp.h"
+#include "math.h"
 
 
 /* Implemented with C OpenMP library for multiple process.
@@ -61,9 +62,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         if(gradient_i[ii]<min_gradient_val)
         {min_gradient_val = gradient_i[ii];}
     }
+    min_gradient_val -= 0.00001;
     for(int ii=0;ii<gradient_len;ii++)
     {
-        gradient[ii] = gradient[ii]- min_gradient_val+0.00001;
+        gradient[ii] = gradient[ii]- min_gradient_val;
     }
     
     // Ymax
@@ -157,8 +159,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             if(training_gradient){free(training_gradient);}
         }         
     }
-    
-    for(int ii=0;ii<K*mm;ii++)
+    int tmpK=K;
+    if(K>pow(2,nlabel)){tmpK=pow(2,nlabel);}
+    //printf("%d\n",tmpK);
+    for(int ii=0;ii<tmpK*mm;ii++)
     {YmaxVal[ii] = YmaxVal[ii]+min_gradient_val*(nlabel-1);}   
    
     if(gradient){free(gradient);}

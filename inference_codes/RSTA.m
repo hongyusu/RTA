@@ -77,13 +77,13 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     
     if T_size <= 1
-        kappa_INIT=2;
-        kappa_MIN=2;
-        kappa_MAX=2;
+        kappa_INIT  =2;
+        kappa_MIN   =2;
+        kappa_MAX   =2;
     else
-        kappa_INIT=128;
-        kappa_MIN=128; 
-        kappa_MAX=128;
+        kappa_INIT  = min(params.maxkappa,2^l);
+        kappa_MIN   = min(params.maxkappa,2^l); 
+        kappa_MAX   = min(params.maxkappa,2^l);
     end
     
     kappa_decrease_flags = zeros(1,m);
@@ -175,13 +175,13 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             else
                 kappa_decrease_flag(xi)=0;
                 [delta_obj_list,kappa_decrease_flags(xi)] = conditional_gradient_descent(xi,kappa);    % optimize on single example
-                kappa0=kappa;
-                while ( kappa_decrease_flags(xi)==0 ) && kappa0 < 128 
-                    
-                    kappa0=kappa0*2;
-                    [delta_obj_list,kappa_decrease_flags(xi)] = conditional_gradient_descent(xi,kappa0);    % optimize on single example
-                end
-                kappa_list(xi)=kappa0;
+%                 
+%                 kappa0=kappa;
+%                 while ( kappa_decrease_flags(xi)==0 ) && kappa0 < params.maxkappa 
+%                     kappa0=kappa0*2;
+%                     [delta_obj_list,kappa_decrease_flags(xi)] = conditional_gradient_descent(xi,kappa0);    % optimize on single example
+%                 end
+                kappa_list(xi)=kappa;
             end
             obj_list = obj_list + delta_obj_list;
             obj = obj + sum(delta_obj_list);
@@ -193,6 +193,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             end
         end
         %kappa_decrease_flags
+        %Yipos_list
         
         %obj_list
         progress_made = (obj >= prev_obj);  
@@ -432,27 +433,27 @@ function compute_duality_gap
             kappa_decrease_flag = 1;
             Ypred(i,:) = -1*ones(1,size(Y_tr,2));
         else
-            [Ypred(i,:),~,kappa_decrease_flag] = ...
-                find_worst_violator(...
-                Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
-                Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:),[]);
-            
+%             [Ypred(i,:),~,kappa_decrease_flag] = ...
+%                 find_worst_violator(...
+%                 Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
+%                 Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:),[]);
+%             
 
-%                 IN_E = zeros(size(E_list{1},1)*2,size(E_list,1));
-%                 for t=1:T_size
-%                     IN_E(:,t) = reshape(E_list{t},size(E_list{1},1)*2,1);
-%                 end
-%                 IN_gradient = zeros(4*size(E_list{1},1),size(E_list,1));
-%                 for t=1:T_size
-%                     IN_gradient(:,t) = reshape(gradient_list_local{t}(:,((i-1)*size(E,1)+1):(i*size(E,1))),4*size(E_list{1},1),1);
-%                 end
-%                 Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:) = (Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:)+1)/2;
-%                 [Ypred(i,:),~,kappa_decrease_flag] = ...
-%                     find_worst_violator_new(...
-%                     Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
-%                     Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:)...
-%                     ,[],IN_E,IN_gradient);
-%                 Ypred(i,:) = Ypred(i,:)*2-1;
+                IN_E = zeros(size(E_list{1},1)*2,size(E_list,1));
+                for t=1:T_size
+                    IN_E(:,t) = reshape(E_list{t},size(E_list{1},1)*2,1);
+                end
+                IN_gradient = zeros(4*size(E_list{1},1),size(E_list,1));
+                for t=1:T_size
+                    IN_gradient(:,t) = reshape(gradient_list_local{t}(:,((i-1)*size(E,1)+1):(i*size(E,1))),4*size(E_list{1},1),1);
+                end
+                Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:) = (Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:)+1)/2;
+                [Ypred(i,:),~,kappa_decrease_flag] = ...
+                    find_worst_violator_new(...
+                    Y_kappa((i:size(Y_tr,1):size(Y_kappa,1)),:),...
+                    Y_kappa_val((i:size(Y_tr,1):size(Y_kappa_val,1)),:)...
+                    ,[],IN_E,IN_gradient);
+                Ypred(i,:) = Ypred(i,:)*2-1;
         end
     end
 
@@ -666,7 +667,9 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         
     end
      
-
+   
+    
+    
     if ~kappa_decrease_flag && 0
 %         for i=1:size(Y_kappa_val,1)
 %             for j = 1:size(Y_kappa_val,2)
@@ -707,7 +710,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 
 
     %% if the worst violator is the correct label, exit without update mu
-    if sum(Ymax~=Y_tr(x,:))==0 || ( ( (kappa_decrease_flag==0) && kappa<128) && iter~=1 )
+    if sum(Ymax~=Y_tr(x,:))==0 %|| ( ( (kappa_decrease_flag==0) && kappa < params.maxkappa) && iter~=1 )
         delta_obj_list = zeros(1,T_size);
         return;
     end
@@ -1097,7 +1100,7 @@ function profile_update_tr
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         %[val_list;Yipos_list;kappa_decrease_flags]
         print_message(...
-            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d Y*pos: (%3.2f %%) (%.2f) (%.2f) (%d) Yipos: (%3.2f %%) (%.2f) (%.2f) (%.2f)  K: (%.2f) (%.2f) (%d) Margin: (%.2f %%) (%.3f) (%.3f) obj: %.2f gap: %.2f %%',...
+            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d Y*pos: %3.2f%% %.2f %.2f %d Yipos: %3.2f%% %.2f %.2f %.2f K: %.2f %.2f %d Margin: %.2f%% %.3f %.3f obj: %.2f gap: %.2f %%',...
             round(tm-profile.start_time),...
             opt_round,...
             profile.n_err,...

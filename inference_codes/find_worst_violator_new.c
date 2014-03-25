@@ -7,19 +7,9 @@
 #include "time.h"
 
 
-/* INPUT K*T_SIZE LABELS AND VALUES MATRIX
- * OUTPUT
- *  BEST LABEL Y*
- *  TRUE LABEL Yi
- *  SCORE OF Y* AND Yi
- * margin is defined as the different between score of Y* and Yi
- * output the different as value for Y_*
- *
- *  POSITION OF BEST LABEL
- * 
- *
- *
- *
+/*
+ *  get worst margin violator from top k list
+ *  size of list K*T_size
  */
 
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
@@ -157,6 +147,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             if(!not_equ)
             {
                 Y_ind = arr2id_curpos->id;
+                Y_pos = 1;
                 break;
             }
             arr2id_curpos = arr2id_curpos->next;
@@ -167,50 +158,48 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     double * Ytmp;
     if(Y_ncol>0)
     {
-    
-    Ytmp = (double *) malloc (sizeof(double) * nlabel);
-    for(int kk=0;kk<nlabel;kk++)
-    {Ytmp[kk] = Y_kappa[kk];}
-       
-    for(int tt=0; tt<Y_kappa_val_nrow; tt++)
-    {
-        double * EEtmp;
-        double * ggradienttmp;
-        EEtmp = (double *) malloc (sizeof(double) * (nlabel-1)*2);
-        ggradienttmp = (double *) malloc (sizeof(double) * (nlabel-1) * 4);
-        // E
-        for(int ll=0;ll<(nlabel-1)*2;ll++)
-        {EEtmp[ll] = E[tt*2*(nlabel-1)+ll];}
-        // GRADIENT
-        for(int ll=0;ll<(nlabel-1)*4;ll++)
-        {ggradienttmp[ll] = gradient[tt*4*(nlabel-1)+ll];}
-        // UPDATE F
-        F_Y += Y2Fy(Ytmp, EEtmp, ggradienttmp, nlabel); 
-        free(ggradienttmp);
-        free(EEtmp);
-    }
-    free(Ytmp);
-    }
-    // get average position
-    double Y_pos_avg = 0;
-    for(int ii=0;ii<Y_kappa_val_nrow;ii++)
-    {
-        int jj;
-        for(jj=0;jj<Y_kappa_val_ncol;jj++)
-        {
-            if(Y_kappa_ind[ii+jj*Y_kappa_val_nrow] == Y_ind)
-            {break;}
-        }
-        Y_pos_avg += jj;
-        if(jj==Y_kappa_val_nrow)
-        {Y_pos_avg -= 1;}
-    }
-    Y_pos_avg = Y_pos_avg / Y_kappa_val_nrow;
+        Ytmp = (double *) malloc (sizeof(double) * nlabel);
+        for(int kk=0;kk<nlabel;kk++)
+        {Ytmp[kk] = Y_kappa[kk];}
 
-//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
-//     printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
-//     printm(Y_kappa,Y_kappa_nrow,20);
-//     printf("finish\n");
+        for(int tt=0; tt<Y_kappa_val_nrow; tt++)
+        {
+            double * EEtmp;
+            double * ggradienttmp;
+            EEtmp = (double *) malloc (sizeof(double) * (nlabel-1)*2);
+            ggradienttmp = (double *) malloc (sizeof(double) * (nlabel-1) * 4);
+            // E
+            for(int ll=0;ll<(nlabel-1)*2;ll++)
+            {EEtmp[ll] = E[tt*2*(nlabel-1)+ll];}
+            // GRADIENT
+            for(int ll=0;ll<(nlabel-1)*4;ll++)
+            {ggradienttmp[ll] = gradient[tt*4*(nlabel-1)+ll];}
+            // UPDATE F
+            F_Y += Y2Fy(Ytmp, EEtmp, ggradienttmp, nlabel); 
+            free(ggradienttmp);
+            free(EEtmp);
+        }
+        free(Ytmp);
+    }
+//     // get average position
+//     double Y_pos_avg = 0;
+//     for(int ii=0;ii<Y_kappa_val_nrow;ii++)
+//     {
+//         int jj;
+//         for(jj=0;jj<Y_kappa_val_ncol;jj++)
+//         {
+//             //printf("%.1f %.1f\n",Y_kappa_ind[ii+jj*Y_kappa_val_nrow],Y_ind);
+//             if(Y_kappa_ind[ii+jj*Y_kappa_val_nrow] == Y_ind)
+//             {break;}
+//         }
+//         Y_pos_avg += jj;
+//         if(jj==Y_kappa_val_nrow)
+//         {Y_pos_avg -= 1;}
+//     }
+//     Y_pos_avg = Y_pos_avg / Y_kappa_val_nrow;
+
+    
+
     //  DESTROY TEMPORATORY LIST
     while(arr2id_head)
     {
@@ -226,6 +215,14 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     theta_K -= nlabel*Y_kappa_val_nrow;
     // DEFINE THE MAXIMUM DEPTH
     int theta_ncol=Y_kappa_val_ncol-1;
+    
+//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     //printm(Y_kappa,Y_kappa_nrow,8);
+//     printf("Y ind:%.2f\n",Y_ind);
+//     printf("Position of Yi:%.2f\n",Y_pos_avg);
+//     printf("F of Yi:%.2f\n",F_Y);
+//     printf("Threshold:%.2f\n\n",theta_K);
     
     
     
@@ -249,8 +246,10 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             if(Y_kappa_ind[jj+ii*Y_kappa_val_nrow]==Y_ind)
             {
                 //printf("skip %d %d \n",jj,ii);
-                if(Y_pos==-1 && F_Y>=theta_K)
-                {Y_pos = Y_pos_avg;}
+                //printf("-->%.2f %.2f : %.15f %.15f %.15f\n",Y_kappa_ind[jj+ii*Y_kappa_val_nrow],Y_ind,F_Y,theta_K,F_Y-theta_K);
+                //if(Y_pos==-1 && F_Y-theta_K>=-0.0001)
+                //{Y_pos = Y_pos_avg;}
+                //printf("%.2f\n",Y_pos);
                 continue;
             }
             // otherwise, Ytmp
@@ -266,8 +265,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             {
                 double * Etmp;
                 double * gradienttmp;
-            Etmp = (double *) malloc (sizeof(double) * (nlabel-1)*2);
-            gradienttmp = (double *) malloc (sizeof(double) * (nlabel-1) * 4);
+                Etmp = (double *) malloc (sizeof(double) * (nlabel-1)*2);
+                gradienttmp = (double *) malloc (sizeof(double) * (nlabel-1) * 4);
                 // E;
                 for(int ll=0;ll<(nlabel-1)*2;ll++)
                 {Etmp[ll] = E[tt*2*(nlabel-1)+ll];}
@@ -277,9 +276,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 // UPDATE F
                 cur_F += Y2Fy(Ytmp, Etmp, gradienttmp, nlabel); 
                 // FREE POINTER SPACE    
-                
-            free(gradienttmp);
-            free(Etmp);
+                free(gradienttmp);
+                free(Etmp);
             }
             // FREE POINTER SPACE
             free(Ytmp);
@@ -291,7 +289,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 cur_row=jj;
                 best_F = cur_F;
                 // if find one then shorten the list
-                if(best_F > theta_K)
+                if(best_F-theta_K > -0.00001)
                 {
                     find=1;
                     // move threshold upwards
@@ -300,7 +298,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                     for(int ii=0;ii<Y_kappa_val_nrow;ii++)
                     {up_K += Y_kappa_val[ii+(theta_ncol-1)*Y_kappa_val_nrow];}
                     up_K -= nlabel*Y_kappa_val_nrow;
-                    while(theta_ncol>=0 && best_F>up_K)
+                    while(theta_ncol>=0 && best_F-up_K>-0.00001)
                     {
                         //printf("\t\t===== move up from %d:%.4f->%.4f\n",theta_ncol,theta_K,up_K);
                         theta_ncol--;
@@ -318,8 +316,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         if(ii>=theta_ncol)
         {break;}
     }
-    
-    
+
     //printf("%d %d -> %.2f find %d best: %.2f threshold: %.2f\n",cur_row,cur_col,cur_F,find,best_F,theta_K);
     // STORE MULTILABEL THAT ACHIEVE THE BEST SCORE F
     for(int ii=0;ii<nlabel;ii++)
@@ -333,7 +330,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     *(mxGetPr(OUT_break_flag)) = 0;
     if(find==1)
     {*(mxGetPr(OUT_break_flag)) = cur_col+1;}
-    *(mxGetPr(OUT_Y_pos)) = Y_pos+1;
+    *(mxGetPr(OUT_Y_pos)) = Y_pos;
+    //printf("%.3f \n",Y_pos+1);
     //printf("%d %.2f %d : %.3f %.3f %.3f\n",find, Y_pos+1,cur_col+1,F_Y,best_F,F_Y-best_F);
     
 }
@@ -364,7 +362,7 @@ void printm(double * M, int nrow, int ncol)
     {
         for(int j=0; j<ncol; j++)
         {
-            printf("%.3f ", M[i+j*nrow]);
+            printf("%.5f ", M[i+j*nrow]);
         }
         printf("\n");
     }

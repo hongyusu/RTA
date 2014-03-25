@@ -2,7 +2,7 @@
 %%
 % running MMCRF on one dataset with random tree / random pair graph as
 % output graph structure connecting multiple output labels
-function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
+function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
 % 
 % mex forward_alg.c
 % mex backward_alg.c
@@ -111,6 +111,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
         Ind=Ind(1:ntrain);
     end
     
+    %Y=Y(:,1:2)
     
 
     
@@ -134,7 +135,8 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
     
     mmcrf_c = 1;
     mmcrf_g = -10000;%0.01;
-    mmcrf_i = 50;
+    mmcrf_i = 100;
+    mmcrf_maxkappa = eval(maxkappa);
     % display something
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
     
@@ -181,6 +183,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
         paramsIn.profiling      = 1;        % profile (test during learning)
         paramsIn.epsilon        = mmcrf_g;        % stopping criterion: minimum relative duality gap
         paramsIn.C              = mmcrf_c;        % margin slack
+        paramsIn.maxkappa       = mmcrf_maxkappa;
         paramsIn.max_CGD_iter   = 1;		% maximum number of conditional gradient iterations per example
         paramsIn.max_LBP_iter   = 3;        % number of Loopy belief propagation iterations
         paramsIn.tolerance      = 1E-10;    % numbers smaller than this are treated as zero

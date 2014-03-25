@@ -21,6 +21,7 @@
 
 double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, int nlabel, double * in_node_degree, int max_node_degree)
 {
+    //back_printm(P_node,16,4);
     double * Ymax_single;
     double * YmaxVal_single;
     Ymax_single = (double *) malloc (sizeof(double) * K*nlabel);
