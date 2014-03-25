@@ -7,130 +7,101 @@
 #include "time.h"
 
 
-
-/* The gateway function 
- * Input:
- *      Y_kappa
- *      Y_kappa_val
- * Output:
- *      Ymax
- *      YmaxVal
- *      break_flag
+/* INPUT K*T_SIZE LABELS AND VALUES MATRIX
+ * OUTPUT
+ *  BEST LABEL Y*
+ *  TRUE LABEL Yi
+ *  SCORE OF Y* AND Yi
+ * margin is defined as the different between score of Y* and Yi
+ * output the different as value for Y_*
+ *
+ *  POSITION OF BEST LABEL
+ * 
+ *
+ *
+ *
  */
+
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
-    //printf("--> in to worst\n");
-    #define IN_Y_kappa          prhs[0]
-    #define IN_Y_kappa_val      prhs[1]
-    #define IN_Y                prhs[2]
-    #define OUT_Ymax            plhs[0]
-    #define OUT_YmaxVal         plhs[1]
-    #define OUT_break_flag      plhs[2]
+    #define IN_Y_kappa          prhs[0] // MATRIX OF MULTILABELS
+    #define IN_Y_kappa_val      prhs[1] // MATRIX OF MULTILABEL SCORES
+    #define IN_Y                prhs[2] // CORRECT MULTILABEL COULD BE EMPTY
+    #define IN_E                prhs[3] // EDGES OF TREES
+    #define IN_gradient         prhs[4] // GREDIENTS OF TREES
+    #define OUT_Ymax            plhs[0] // OUTPUT BEST MULTILABEL
+    #define OUT_YmaxVal         plhs[1] // OUTPUT MARGIN
+    #define OUT_break_flag      plhs[2] // HIGHEST POSITION OF MULTILABEL IN THE LIST
+    #define OUT_Y_pos           plhs[3] // AVERAGE POSITION OF Yi
     
     double * Y_kappa;
     double * Y_kappa_val;
     double * Y;
+    double * E;
+    double * gradient;
     double * Ymax;
     double break_flag=0;
+    double Y_pos=-1;
     double Y_ind;
     
-    mint Y_kappa_nrow;
-    mint Y_kappa_ncol;
-    mint Y_kappa_val_nrow;
-    mint Y_kappa_val_ncol;
-    mint nlabel;
-    mint Y_ncol;
-    mint Y_nrow;
+    int Y_kappa_nrow;
+    int Y_kappa_ncol;
+    int Y_kappa_val_nrow;
+    int Y_kappa_val_ncol;
+    int nlabel;
+    int Y_ncol;
+    int Y_nrow;
     
     /* INPUT VARIABLES */
-    Y_kappa = mxGetPr(IN_Y_kappa);
-    Y_kappa_nrow = mxGetM(IN_Y_kappa);
-    Y_kappa_ncol = mxGetN(IN_Y_kappa);
-    Y_kappa_val = mxGetPr(IN_Y_kappa_val);
-    Y_kappa_val_nrow = mxGetM(IN_Y_kappa_val);
-    Y_kappa_val_ncol = mxGetN(IN_Y_kappa_val);
-    Y = mxGetPr(IN_Y);
-    Y_ncol = mxGetN(IN_Y);
-    Y_nrow = mxGetM(IN_Y);
+    Y_kappa         = mxGetPr(IN_Y_kappa);
+    Y_kappa_nrow    = mxGetM(IN_Y_kappa);
+    Y_kappa_ncol    = mxGetN(IN_Y_kappa);
+    Y_kappa_val     = mxGetPr(IN_Y_kappa_val);
+    Y_kappa_val_nrow    = mxGetM(IN_Y_kappa_val);
+    Y_kappa_val_ncol    = mxGetN(IN_Y_kappa_val);
+    Y           = mxGetPr(IN_Y);
+    E           = mxGetPr(IN_E);
+    gradient    = mxGetPr(IN_gradient);
+    Y_ncol      = mxGetN(IN_Y);
+    Y_nrow      = mxGetM(IN_Y);
+    nlabel      = Y_kappa_ncol/Y_kappa_val_ncol;
     
-    nlabel=Y_kappa_ncol/Y_kappa_val_ncol;
-    /* OUTPUT VARIABLES */
-    OUT_Ymax = mxCreateDoubleMatrix(1,nlabel,mxREAL);
-    OUT_YmaxVal = mxCreateDoubleScalar(1);
-    OUT_break_flag = mxCreateDoubleScalar(1);
-    Ymax = mxGetPr(OUT_Ymax);
+    // OUTPUT STUFFS
+    OUT_Ymax        = mxCreateDoubleMatrix(1,nlabel,mxREAL);
+    OUT_YmaxVal     = mxCreateDoubleScalar(1);
+    OUT_break_flag  = mxCreateDoubleScalar(1);
+    OUT_Y_pos       = mxCreateDoubleScalar(1);
+    Ymax            = mxGetPr(OUT_Ymax);
 
+    // ASSIGN AN ID TO EACH UNIQUE LABEL IN THE LIST
     double * Y_kappa_ind;
     Y_kappa_ind = (double *) malloc (sizeof(double) * Y_kappa_val_nrow* Y_kappa_val_ncol);
-//     mxArray * mat_Y_kappa_ind;
-//     double *Y_kappa_ind;
-//     mat_Y_kappa_ind = mxCreateDoubleMatrix(Y_kappa_val_nrow, Y_kappa_val_ncol,mxREAL);
-//     Y_kappa_ind = mxGetPr(mat_Y_kappa_ind);
-    
-    
-    
-    /* ASSIGN DECIMAL TO EACH BINARY MULTILABEL */
-        
-
-//     for(mint ii=0;ii<Y_kappa_nrow;ii++)
-//     {
-//         for(mint jj=0;jj<Y_kappa_val_ncol;jj++)
-//         {
-//             /* printf("%d %d %d\n",ii,jj,nlabel); */
-//             Y_kappa_ind[ii+jj*Y_kappa_nrow] = 0;
-//             for(mint kk=0;kk<nlabel;kk++)
-//             {
-//                 double tmp=0;
-//                 if((Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow]+1)/2==1)
-//                 {tmp=1;}
-//                 Y_kappa_ind[ii+jj*Y_kappa_nrow] = Y_kappa_ind[ii+jj*Y_kappa_nrow]*2 + tmp;
-//             }
-//         }
-//     }
-//     Y_ind = -1;
-//     if(Y_nrow>0)
-//     {
-//         Y_ind ++;
-//         for(mint kk=0;kk<nlabel;kk++)
-//         {
-//             double tmp = 0;
-//             if((Y[kk]+1)/2==1)
-//             {tmp=1;}
-//             Y_ind = Y_ind*2+tmp;
-//             //Y_ind = Y_ind*2 + ((Y[kk]+1)/2==1 ? 1:0);
-//         }
-//     }
-//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
-//     printf("%.2f\n",Y_ind);
-
     struct type_arr2id_list * arr2id_head;
     struct type_arr2id_list * arr2id_curpos;
     struct type_arr2id_list * arr2id_prevpos;
     arr2id_head = NULL;
     arr2id_curpos = NULL;
     int num_uelement = 1;
-    for(mint ii=0;ii<Y_kappa_nrow;ii++)
+    for(int ii=0;ii<Y_kappa_nrow;ii++)
     {
-        for(mint jj=0;jj<Y_kappa_val_ncol;jj++)
+        for(int jj=0;jj<Y_kappa_val_ncol;jj++)
         {
-            
             double * tmp;
             tmp = (double *) malloc (sizeof(double ) * nlabel);
             for(int kk=0;kk<nlabel;kk++)
             {tmp[kk] = Y_kappa[ii+(jj*nlabel+kk)*Y_kappa_nrow];}
-            
+            // EMPTY LIST -> INITIALIZE THE LIST BY THE ELEMENT
             if(!arr2id_head)
             {
                 Y_kappa_ind[ii+jj*Y_kappa_nrow] = num_uelement;
                 arr2id_head = (struct type_arr2id_list * ) malloc (sizeof(struct type_arr2id_list));
                 arr2id_head->arr = tmp;
                 arr2id_head->id = num_uelement;
-                //printf("\tadd %d", num_uelement);
                 arr2id_head->next=NULL;
                 num_uelement++;
                 continue;
             }
-            
+            // NOT EMPTY GO THROUGH
             arr2id_curpos = arr2id_head;
             int find=0;
             while(arr2id_curpos)
@@ -153,190 +124,247 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 arr2id_prevpos = arr2id_curpos;
                 arr2id_curpos = arr2id_curpos->next;
             }
-            // if the element is not found, add it to the list
-            arr2id_curpos = arr2id_prevpos;
+            // ELEMENE NOT FOUND, ADD IT TO CURRENT LIST
             if(!find)
             {
+                arr2id_curpos           = arr2id_prevpos;
                 Y_kappa_ind[ii+jj*Y_kappa_nrow] = num_uelement;
-                arr2id_curpos->next = (struct type_arr2id_list * ) malloc (sizeof(struct type_arr2id_list));
-                arr2id_curpos = arr2id_curpos->next;
-                arr2id_curpos->arr = tmp;
-                arr2id_curpos->id = num_uelement;
-                //printf("\tadd %d", num_uelement);
-                arr2id_curpos->next = NULL;
-                num_uelement++;
+                arr2id_curpos->next     = (struct type_arr2id_list * ) malloc (sizeof(struct type_arr2id_list));
+                arr2id_curpos           = arr2id_curpos->next;
+                arr2id_curpos->arr      = tmp;
+                arr2id_curpos->id       = num_uelement;
+                arr2id_curpos->next     = NULL;
+                num_uelement ++;
             }
         }
     }
-    
-//     arr2id_curpos = arr2id_head;
-//     while(arr2id_curpos)
-//     {
-//        printf("%.2f--",arr2id_curpos->id);
-//        arr2id_curpos = arr2id_curpos->next;
-//     }
-//     printf("link\n");
-     
-    /* TRUE */
-    //printm(Y,1,nlabel);
+    // ASSIGN ID TO TRUE LABEL IN THE LIST
     Y_ind = 0.0;
-    arr2id_curpos = arr2id_head;
-    //printf("%.2f\n",Y_ind);
-    while(arr2id_curpos)
-    {
-        int not_equ = 0;
-        for(int kk=0;kk<nlabel;kk++)
-        {
-            if(Y[kk]!=arr2id_curpos->arr[kk])
-            {
-                not_equ = 1;
-                break;
-            }
-        }
-        if(!not_equ)
-        {
-            Y_ind = arr2id_curpos->id;
-            break;
-        }
-        arr2id_curpos = arr2id_curpos->next;
-    }
-    
-//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
-//     printf("%.2f\n",Y_ind);
-//     printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
-//     printf("---->\n");
-    
-    // destroy arr2id list
-    while(arr2id_head)
+    if(Y_ncol>0)
     {
         arr2id_curpos = arr2id_head;
-        arr2id_head = arr2id_head->next;
+        while(arr2id_curpos)
+        {
+            int not_equ = 0;
+            for(int kk=0;kk<nlabel;kk++)
+            {
+                if(Y[kk]!=arr2id_curpos->arr[kk])
+                {
+                    not_equ = 1;
+                    break;
+                }
+            }
+            if(!not_equ)
+            {
+                Y_ind = arr2id_curpos->id;
+                break;
+            }
+            arr2id_curpos = arr2id_curpos->next;
+        }
+    }
+    // get F_Y
+    double F_Y=0; 
+    double * Ytmp;
+    if(Y_ncol>0)
+    {
+    
+    Ytmp = (double *) malloc (sizeof(double) * nlabel);
+    for(int kk=0;kk<nlabel;kk++)
+    {Ytmp[kk] = Y_kappa[kk];}
+       
+    for(int tt=0; tt<Y_kappa_val_nrow; tt++)
+    {
+        double * EEtmp;
+        double * ggradienttmp;
+        EEtmp = (double *) malloc (sizeof(double) * (nlabel-1)*2);
+        ggradienttmp = (double *) malloc (sizeof(double) * (nlabel-1) * 4);
+        // E
+        for(int ll=0;ll<(nlabel-1)*2;ll++)
+        {EEtmp[ll] = E[tt*2*(nlabel-1)+ll];}
+        // GRADIENT
+        for(int ll=0;ll<(nlabel-1)*4;ll++)
+        {ggradienttmp[ll] = gradient[tt*4*(nlabel-1)+ll];}
+        // UPDATE F
+        F_Y += Y2Fy(Ytmp, EEtmp, ggradienttmp, nlabel); 
+        free(ggradienttmp);
+        free(EEtmp);
+    }
+    free(Ytmp);
+    }
+    // get average position
+    double Y_pos_avg = 0;
+    for(int ii=0;ii<Y_kappa_val_nrow;ii++)
+    {
+        int jj;
+        for(jj=0;jj<Y_kappa_val_ncol;jj++)
+        {
+            if(Y_kappa_ind[ii+jj*Y_kappa_val_nrow] == Y_ind)
+            {break;}
+        }
+        Y_pos_avg += jj;
+        if(jj==Y_kappa_val_nrow)
+        {Y_pos_avg -= 1;}
+    }
+    Y_pos_avg = Y_pos_avg / Y_kappa_val_nrow;
+
+//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
+//     printm(Y_kappa,Y_kappa_nrow,20);
+//     printf("finish\n");
+    //  DESTROY TEMPORATORY LIST
+    while(arr2id_head)
+    {
+        arr2id_curpos   = arr2id_head;
+        arr2id_head     = arr2id_head->next;
         free(arr2id_curpos->arr);
         free(arr2id_curpos);
     }
+    // DEFINE THE THRESHOLD
+    double theta_K=0;
+    for(int ii=0;ii<Y_kappa_val_nrow;ii++)
+    {theta_K += Y_kappa_val[ii+(Y_kappa_val_ncol-1)*Y_kappa_val_nrow];}
+    theta_K -= nlabel*Y_kappa_val_nrow;
+    // DEFINE THE MAXIMUM DEPTH
+    int theta_ncol=Y_kappa_val_ncol-1;
     
-
     
-    //printf("--> middle\n");
-    //printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
+    
+    //  LOOP THROUGH MULTILABELS
     //printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
-    
-    /* LOOP THROUGHT KAPPA*/
-    struct type_element_list * my_list;
-    struct type_element_list * cur_pos;
-    my_list=NULL;
-    cur_pos=NULL;
-    double max_val = -1000000000;
-    double max_ind = -1;
-    mint max_row=0;
-    mint max_col=0;
-
-    for(mint ii=0;ii<Y_kappa_val_ncol;ii++)
+    double cur_F;
+    double best_F;
+    best_F  = -10000000000;
+    cur_F   = -10000000000;
+    int cur_row;
+    int cur_col;
+    cur_row =-1;
+    cur_col =-1;
+    int find;
+    find = 0;
+    for(int ii=0; ii<Y_kappa_val_ncol;ii++)
     {
-        double theta=0;
-        /* GET CURRENT LINE THRESHOLD THETA */ 
-        for(mint jj=0;jj<Y_kappa_val_nrow;jj++)
-        {theta = theta + Y_kappa_val[jj+ii*Y_kappa_val_nrow];}
-        /* UPATE SCORE */
-        for(mint jj=0;jj<Y_kappa_val_nrow;jj++)
+        for(int jj=0; jj<Y_kappa_val_nrow; jj++)
         {
-            /* THE EMPTY LIST, BEGINNING STAGE */
-            if(!my_list)
+            // if current label is the true label -> skip
+            if(Y_kappa_ind[jj+ii*Y_kappa_val_nrow]==Y_ind)
             {
-                my_list = ( struct type_element_list * ) malloc (sizeof(struct type_element_list));
-				my_list->id = Y_kappa_ind[jj+ii*Y_kappa_val_nrow];
-				my_list->val = 0;
-				my_list->next = NULL;
-                //printf("-->init %.2f %.2f\n", my_list->id, my_list->val);
+                //printf("skip %d %d \n",jj,ii);
+                if(Y_pos==-1 && F_Y>=theta_K)
+                {Y_pos = Y_pos_avg;}
+                continue;
             }
-            cur_pos = my_list;
-			/* LOOP THE LIST AND UPDATE ELEMENT */
-            //printf("-->on %d %d %.2f %.2f\n",jj,ii,Y_kappa_ind[jj+ii*Y_kappa_val_nrow],Y_kappa_val[jj+ii*Y_kappa_val_nrow]);
-            mint find_flag=0;
-			while(1)
-			{
-				if(cur_pos->id == Y_kappa_ind[jj+ii*Y_kappa_val_nrow])
-				{
-					cur_pos->val = cur_pos->val + Y_kappa_val[jj+ii*Y_kappa_val_nrow];
-                    find_flag=1;
-                    //printf("-->update %.2f %.2f\n", cur_pos->id, cur_pos->val);
-					break;
-				}
-                if(cur_pos->next)
-                {cur_pos = cur_pos->next;}
-                else
-                {break;}
-			}
-			/* CURRENT ELEMENT IS NOT FOUND IN THE LIST */
-			if(!find_flag)
-			{
-				cur_pos->next = ( struct type_element_list * ) malloc (sizeof(struct type_element_list));
-                cur_pos = cur_pos->next;
-				cur_pos->id = Y_kappa_ind[jj+ii*Y_kappa_val_nrow];
-				cur_pos->val = Y_kappa_val[jj+ii*Y_kappa_val_nrow];
-				cur_pos->next = NULL;
-                //printf("-->add %.2f %.2f\n", cur_pos->id, cur_pos->val);
-			}
-            /* ACCESS UPDATED VALUE */
-            if(max_val<cur_pos->val & cur_pos->id!=Y_ind)
+            // otherwise, Ytmp
+            //double * Ytmp;
+            Ytmp = (double *) malloc (sizeof(double) * nlabel);
+            for(int kk=0;kk<nlabel;kk++)
             {
-                max_val = cur_pos->val;
-                max_ind = cur_pos->id;
-                max_row = jj;
-                max_col = ii;
+                Ytmp[kk] = Y_kappa[jj+(ii*nlabel+kk)*Y_kappa_val_nrow];
             }
-            //printf("-----------%d %d %d %d %.2f %.2f %.2f\n\n", jj,ii,max_row,max_col,max_ind,max_val,theta); 
-		}
-        if(max_val >= theta)
-        {
-            break_flag = 1;
-            break;
+            // EVALUATE OVER TREE
+            cur_F=0;
+            for(int tt=0; tt<Y_kappa_val_nrow; tt++)
+            {
+                double * Etmp;
+                double * gradienttmp;
+            Etmp = (double *) malloc (sizeof(double) * (nlabel-1)*2);
+            gradienttmp = (double *) malloc (sizeof(double) * (nlabel-1) * 4);
+                // E;
+                for(int ll=0;ll<(nlabel-1)*2;ll++)
+                {Etmp[ll] = E[tt*2*(nlabel-1)+ll];}
+                // GRADIENT
+                for(int ll=0;ll<(nlabel-1)*4;ll++)
+                {gradienttmp[ll] = gradient[tt*4*(nlabel-1)+ll];}
+                // UPDATE F
+                cur_F += Y2Fy(Ytmp, Etmp, gradienttmp, nlabel); 
+                // FREE POINTER SPACE    
+                
+            free(gradienttmp);
+            free(Etmp);
+            }
+            // FREE POINTER SPACE
+            free(Ytmp);
+            //printf("\t%d %d -> %.4f threshold col:%d val:%.4f  |  True:%.4f\n",jj,ii,cur_F,theta_ncol,theta_K,F_Y);
+            // if current score is better than the best we have so far update current we have
+            if(best_F<cur_F)    
+            {
+                cur_col=ii;
+                cur_row=jj;
+                best_F = cur_F;
+                // if find one then shorten the list
+                if(best_F > theta_K)
+                {
+                    find=1;
+                    // move threshold upwards
+                    double up_K;
+                    up_K=0;
+                    for(int ii=0;ii<Y_kappa_val_nrow;ii++)
+                    {up_K += Y_kappa_val[ii+(theta_ncol-1)*Y_kappa_val_nrow];}
+                    up_K -= nlabel*Y_kappa_val_nrow;
+                    while(theta_ncol>=0 && best_F>up_K)
+                    {
+                        //printf("\t\t===== move up from %d:%.4f->%.4f\n",theta_ncol,theta_K,up_K);
+                        theta_ncol--;
+                        theta_K = up_K;
+                        
+                        up_K=0;
+                        for(int ii=0;ii<Y_kappa_val_nrow;ii++)
+                        {up_K += Y_kappa_val[ii+(theta_ncol-1)*Y_kappa_val_nrow];}
+                        up_K -= nlabel*Y_kappa_val_nrow;
+                        //printf("%.4f\n",up_K);
+                    }
+                }
+            }
         }
-        
+        if(ii>=theta_ncol)
+        {break;}
     }
-    /* DESTROY TEMPORATORY POINTER SPACE */
     
-    while(my_list)
+    
+    //printf("%d %d -> %.2f find %d best: %.2f threshold: %.2f\n",cur_row,cur_col,cur_F,find,best_F,theta_K);
+    // STORE MULTILABEL THAT ACHIEVE THE BEST SCORE F
+    for(int ii=0;ii<nlabel;ii++)
     {
-        cur_pos = my_list;
-        my_list = my_list->next;
-        free(cur_pos);
-    }  
-    
-    
-    //mxDestroyArray(mat_Y_kappa_ind);
+        Ymax[ii] = Y_kappa[cur_row+(cur_col*(int)nlabel+ii)*Y_kappa_nrow];
+    }
+    // FREE POINTER SPACE
     free(Y_kappa_ind);
-    
     /* COLLECT RESULTS */
-    *(mxGetPr(OUT_YmaxVal)) = max_val;
-    *(mxGetPr(OUT_break_flag)) = break_flag;
+    *(mxGetPr(OUT_YmaxVal)) = F_Y-best_F;
+    *(mxGetPr(OUT_break_flag)) = 0;
+    if(find==1)
+    {*(mxGetPr(OUT_break_flag)) = cur_col+1;}
+    *(mxGetPr(OUT_Y_pos)) = Y_pos+1;
+    //printf("%d %.2f %d : %.3f %.3f %.3f\n",find, Y_pos+1,cur_col+1,F_Y,best_F,F_Y-best_F);
     
-//     printf("--> in to worst1\n");
-//     printf("%d %d %d\n",mxGetN(OUT_Ymax),mxGetN(IN_Y_kappa),nlabel);
-//     printf("%d %d \n",max_row,max_col);
-//     printm(Y_kappa_ind,Y_kappa_val_nrow,Y_kappa_val_ncol);
-//     printm(Y_kappa_val,Y_kappa_val_nrow,Y_kappa_val_ncol);
-//     
-    for(mint ii=0;ii<nlabel;ii++)
-    {
-//         printf("%d %d %d %d\n",max_row,max_col,max_row,(max_col*nlabel+ii)*Y_kappa_nrow); 
-        Ymax[ii] = Y_kappa[max_row+(max_col*nlabel+ii)*Y_kappa_nrow];
-    }
-    
-    
-    /* printf("%d %d %.2f %.2f\n", max_row, max_col,max_ind,max_val); */
-    //printf("--| out of worst\n");
 }
 
+// GIVEN MULTILABEL AND GRADIENT, COMPUTE THE FUNCTUON VALUE
+double Y2Fy(double *Y, double * E, double * gradient, double nlabel)
+{
+    double * mu;
+    double Fy;
+    Fy=0.0;
+    // GET MU OUT FROM Y
+    mu = (double *) calloc (sizeof(double), ((int)nlabel-1)*4);
+    for(int i=0;i<(int)nlabel-1;i++)
+    {mu[ 4*i+(int)Y[(int)E[i]-1]*2+(int)Y[(int)E[i+(int)(nlabel-1)]-1] ] = 1.0;}
+    // COMPUTE MU*GRADIENT
+    for(int i=0;i<(nlabel-1)*4;i++)
+    {Fy += mu[i]*gradient[i];}
+    // RETURN RESULTS
+    free(mu);
+    return(Fy);
+}
 
-void printm(double * M, mint nrow, mint ncol)
+// GIVEM POINTER AND DIMENTION, PRINT OUT MATRIX
+void printm(double * M, int nrow, int ncol)
 {
     printf("#row: %d #ncol %d\n", nrow,ncol);
-    for(mint i=0; i<nrow; i++)
+    for(int i=0; i<nrow; i++)
     {
-        for(mint j=0; j<ncol; j++)
+        for(int j=0; j<ncol; j++)
         {
-            printf("%.1f ", M[i+j*nrow]);
+            printf("%.3f ", M[i+j*nrow]);
         }
         printf("\n");
     }

@@ -66,7 +66,10 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
             Yuniq(i)=i;
         end
     end
+    
     Y=Y(:,Yuniq(Yuniq~=0));
+    
+    
 
 
     %% feature normalization (tf-idf for text data, scale and centralization for other numerical features)
@@ -100,13 +103,17 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
     end
 
     %% select part of the data for code sanity check
+    ntrain = 100;
     if isTest==1
-        X=X(1:100,:);
-        Y=Y(1:100,:);
-        K=K(1:100,1:100);
-        Ind=Ind(1:100);
+        X=X(1:ntrain,:);
+        Y=Y(1:ntrain,:);
+        K=K(1:ntrain,1:ntrain);
+        Ind=Ind(1:ntrain);
     end
+    
+    
 
+    
 
 
     %% parameter selection
@@ -125,6 +132,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
     parameters=sortrows(parameters,[3,2]);
     mmcrf_c = parameters(para_n,2);
     
+    mmcrf_c = 1;
     mmcrf_g = -10000;%0.01;
     mmcrf_i = 50;
     % display something
@@ -151,7 +159,9 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm)
         E=sortrows(E,[1,2]); % sort by head and tail
         Elist{i}=RootTree(E); % put into cell array
 %         if i~=1
-%             Elist{i} = Elist{1};
+%             Elist{i}=Elist{1};
+%             Elist{i}(i,1) = Elist{1}(i-1,1);
+%             Elist{i}=RootTree(Elist{i});
 %         end
     end
     % pick up one random graph

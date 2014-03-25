@@ -30,28 +30,28 @@ def run():
   is_main_run=1
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
-  filenames=['toy10','emotions','yeast','scene','enron','medical','toy50']
+  filenames=['toy10','emotions']#,'yeast','scene','enron','medical','toy50']
   n=0
-  for t in range(0,61,15):
-    if t==0:
-      t=1
+  for kth_fold in ['1']:#,'2','3','4','5']:
     for filename in filenames:
       for graph_type in ['tree']:
-        for l_norm in ['1','2']:
-          para_t="%d" % (t)
-          for kth_fold in ['1','2','3','4','5']:
+        for l_norm in ['2']:
+          for t in range(0,51,10):
+            if t==0:
+              t=1
+            para_t="%d" % (t)
             node=cluster[n%len(cluster)]
             n+=1
             p=multiprocessing.Process(target=singleRSTA, args=(filename,graph_type,para_t,node,kth_fold,l_norm,))
             jobs.append(p)
             p.start()
-            time.sleep(10) # fold
+            time.sleep(10*is_main_run) # fold
             pass
-          time.sleep(60) # l norm
+          time.sleep(10*is_main_run) # l norm
           pass
-      time.sleep(60*is_main_run) # file
+      time.sleep(10*is_main_run) # file
       pass
-    time.sleep(300*is_main_run) # t
+    time.sleep(10*is_main_run) # t
     pass
   for job in jobs:
     job.join()

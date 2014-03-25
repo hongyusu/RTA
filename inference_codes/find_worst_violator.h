@@ -1,7 +1,6 @@
 
 
 
-#define mint mwSize
 
 
 struct type_element_list
@@ -18,5 +17,6 @@ struct type_arr2id_list
    struct type_arr2id_list * next;
 };
 
-void printm(double * M, mint nrow, mint ncol);
+void printm(double * M, int nrow, int ncol);
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] );
+double Y2Fy(double *Y, double * E, double * gradient, double nlabel);
