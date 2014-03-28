@@ -33,7 +33,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     % set random number seed
     rand('twister', 0);
     % suffix for write result files
-    suffix=sprintf('%s_%s_%s_f%s_l%s_RSTAr', filename,graph_type,t,kth_fold,l_norm);
+    suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_RSTAr', filename,graph_type,t,kth_fold,l_norm,maxkappa);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     %
@@ -111,7 +111,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         Ind=Ind(1:ntrain);
     end
     
-    %Y=Y(:,1:2)
+    %Y=Y(:,1:20);
     
 
     
@@ -135,7 +135,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     
     mmcrf_c = 1;
     mmcrf_g = -10000;%0.01;
-    mmcrf_i = 100;
+    mmcrf_i = 50;
     mmcrf_maxkappa = eval(maxkappa);
     % display something
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
@@ -160,11 +160,16 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         E=[E,min(E')',max(E')'];E=E(:,3:4); % arrange head and tail
         E=sortrows(E,[1,2]); % sort by head and tail
         Elist{i}=RootTree(E); % put into cell array
+        
+        Elist{i} = Elist{1};
 %         if i~=1
 %             Elist{i}=Elist{1};
-%             Elist{i}(i,1) = Elist{1}(i-1,1);
+%             pos = randsample(2:(size(Elist{1},1)),1);
+%             Elist{i}(pos,1) = randsample(unique(Elist{1}(1:(pos-1),:)),1);
 %             Elist{i}=RootTree(Elist{i});
 %         end
+        
+        
     end
     % pick up one random graph
     E=Elist{t};

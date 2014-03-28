@@ -1,14 +1,17 @@
 
-
-
-
-
 /* 
- * IMPLEMENTED WITH C OPENMP LIBRARY FOR PARALLEL COMPUTATION
+ * backward_alg_omp.c
  *
- * BACKWARD ALGORITHM TO GET K BEST MULTILABELS
+ * Ver 0.0
  *
- * PART OF COMPUTE_TOPK_OMP
+ * March 2014
+ *
+ * Implemented with C OpenMP library of multiple processes.
+ * Input:   score matrix, pointer matrix, K, edge list, number of labels, node degree, maximum node degree
+ * Output:  multilabel, score of multilabel
+ * Compile into MATLAB function with:
+ *      part of compute_topk_omp.c
+ *
  */
 
 
@@ -19,9 +22,9 @@
 #include "omp.h"
 
 
-double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, int nlabel, double * in_node_degree, int max_node_degree)
+double * backward_alg_omp ( double * P_node, double * T_node, int K, double * E, int nlabel, double * in_node_degree, int max_node_degree )
 {
-    //back_printm(P_node,16,4);
+    //b_print_mat(P_node,16,4);
     double * Ymax_single;
     double * YmaxVal_single;
     Ymax_single = (double *) malloc (sizeof(double) * K*nlabel);
@@ -96,14 +99,14 @@ double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, i
                     ll ++;
                 }
             }
-            qsort(tmp_M, 2*K, sizeof(back_t_v2i), (void *)back_compare_structs);
+            qsort(tmp_M, 2*K, sizeof(back_t_v2i), (void *)b_compare_structs);
             /* PICKING WILL BE FLAGED*/
             Q_node[(tmp_M[kk].nrow+par*K) + tmp_M[kk].ncol*K*nlabel]=PICK;
             YmaxVal_single[kk] = tmp_M[kk].v;
             free(tmp_M);
 //             printf("-->%d\n",kk);
-//             back_printm(Q_node,P_node_nrow,P_node_ncol);
-//             back_printm(T_node,P_node_nrow,P_node_ncol);
+//             b_print_mat(Q_node,P_node_nrow,P_node_ncol);
+//             b_print_mat(T_node,P_node_nrow,P_node_ncol);
 //             printf("--|\n");
 
             /* EVERYTHING IS STANDARDIZE WE DO LOOP TRACE DOWN */
@@ -177,7 +180,7 @@ double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, i
             }
             //printf("+++||  %d-->%d\n",tid,training_i);
             //printf("--->\n");
-            //back_printm(Y,1,10);
+            //b_print_mat(Y,1,10);
             for(int ii=0;ii<nlabel;ii++)
             {Ymax_single[kk*nlabel+ii] = Y[ii]*2-1;}
 
@@ -210,7 +213,7 @@ double * backward_alg_omp(double * P_node, double * T_node, int K, double * E, i
 
 
 
-int back_compare_structs (const void *a, const void *b)
+int b_compare_structs ( const void *a, const void *b )
 {    
     back_t_v2i *struct_a = (back_t_v2i *) a;
     back_t_v2i *struct_b = (back_t_v2i *) b;
@@ -233,7 +236,7 @@ int back_compare_structs (const void *a, const void *b)
 
 
 
-void back_printm(double * M, int nrow, int ncol)
+void b_print_mat ( double * M, int nrow, int ncol )
 {
     printf("#row: %d #ncol %d\n", nrow,ncol);
     for(int i=0; i<nrow; i++)

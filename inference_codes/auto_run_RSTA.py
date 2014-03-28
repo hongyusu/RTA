@@ -11,14 +11,14 @@ logging.basicConfig(format='%(asctime)s %(filename)s %(funcName)s %(levelname)s:
 
 
 
-def singleRSTA(filename,graph_type,t,node,kth_fold,l_norm):
+def singleRSTA(filename,graph_type,t,node,kth_fold,l_norm,kappa):
   try:
-    with open("../outputs/%s_%s_%s_f%s_l%s_RSTAr.log" % (filename,graph_type,t,kth_fold,l_norm)): pass
-    logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s' %( node,filename,graph_type,t,kth_fold,l_norm))
+    with open("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAr.log" % (filename,graph_type,t,kth_fold,l_norm,kappa)): pass
+    logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
   except:
-    logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s' %( node,filename,graph_type,t,kth_fold,l_norm))
-    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /home/group/urenzyme/workspace/colt2014/experiments/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_RSTAr' """ % (node,filename,graph_type,t,kth_fold,l_norm,filename,graph_type,t,kth_fold,l_norm) )
-    logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s' %( node,filename,graph_type,t,kth_fold,l_norm))
+    logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
+    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /home/group/urenzyme/workspace/colt2014/experiments/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAr' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
+    logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
     time.sleep(5)
   pass
 
@@ -30,19 +30,20 @@ def run():
   is_main_run=1
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
-  filenames=['toy10','emotions']#,'yeast','scene','enron','medical','toy50']
+  filenames=['toy10','emotions','yeast','medical','scene','enron','toy50']#,'fp','cancer','cal500']
   n=0
   for kth_fold in ['1']:#,'2','3','4','5']:
     for filename in filenames:
-      for graph_type in ['tree']:
+      graph_type = 'tree'
+      for kappa in ['2','4','8','16','20']:
         for l_norm in ['2']:
-          for t in range(0,51,10):
+          for t in range(0,41,5):
             if t==0:
               t=1
             para_t="%d" % (t)
             node=cluster[n%len(cluster)]
             n+=1
-            p=multiprocessing.Process(target=singleRSTA, args=(filename,graph_type,para_t,node,kth_fold,l_norm,))
+            p=multiprocessing.Process(target=singleRSTA, args=(filename,graph_type,para_t,node,kth_fold,l_norm,kappa,))
             jobs.append(p)
             p.start()
             time.sleep(10*is_main_run) # fold
@@ -51,7 +52,7 @@ def run():
           pass
       time.sleep(10*is_main_run) # file
       pass
-    time.sleep(10*is_main_run) # t
+    time.sleep(60*is_main_run) # t
     pass
   for job in jobs:
     job.join()

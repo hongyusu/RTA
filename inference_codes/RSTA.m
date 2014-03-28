@@ -35,6 +35,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global val_list;
     global kappa_list;
     global Yipos_list;
+    global GmaxG0_list;
+    global GoodUpdate_list;
     
     
     
@@ -67,11 +69,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
     
-    norm_const_linear = 1/T_size/size(E_list{1},1);
-    norm_const_quadratic_list = zeros(1,T_size)+1/T_size;
     
-    norm_const_linear = 1/sqrt(T_size)/size(E_list{1},1);
-    norm_const_quadratic_list = zeros(1,T_size)+1/sqrt(T_size);
+    norm_const_linear = 1/(T_size)/size(E_list{1},1);
+    norm_const_quadratic_list = zeros(1,T_size)+1/(T_size);
     
     mu_list = cell(T_size);
     
@@ -85,6 +85,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_MIN   = min(params.maxkappa,2^l); 
         kappa_MAX   = min(params.maxkappa,2^l);
     end
+    
     
     kappa_decrease_flags = zeros(1,m);
     kappa=kappa_INIT;
@@ -104,6 +105,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     val_list = zeros(1,m);
     Yipos_list = zeros(1,m);
     kappa_list = zeros(1,m);
+    GmaxG0_list = zeros(1,m);
+    GoodUpdate_list = zeros(1,m);
     
     %% initialization
     
@@ -192,6 +195,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
                 kappa = max(ceil(kappa/2),kappa_MIN);
             end
         end
+        
         %kappa_decrease_flags
         %Yipos_list
         
@@ -600,6 +604,8 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
     global val_list;
     global Yipos_list;
+    global GmaxG0_list;
+    global GoodUpdate_list;
     
     
     Y_kappa = zeros(T_size,kappa*l);        % label prediction
@@ -630,14 +636,19 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         for i=1:l
             node_degree(i) = sum(sum(E==i));
         end
+        
+
         [Ymax,YmaxVal] = compute_topk_omp(gradient,kappa,E,node_degree);
         
         % SAVE RESULTS
         Y_kappa(t,:) = Ymax;
         Y_kappa_val(t,:) = YmaxVal;
+        
+        
+    
     end
     
-    
+
     
     
 
@@ -658,19 +669,26 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         end
         Y_kappa = (Y_kappa+1)/2;
         Yi = (Y_tr(x,:)+1)/2;
+%         
+%         Y_kappa = Y_kappa(1,:);
+%         Y_kappa_val = Y_kappa_val(1,:);
+%         IN_E = IN_E(:,1);
+%         IN_gradient = IN_gradient(:,1);
+        
+
         [Ymax, val, kappa_decrease_flag,Y_pos] = find_worst_violator_new(Y_kappa,Y_kappa_val,Yi,IN_E,IN_gradient);
-        %[Ymax, val, kappa_decrease_flag,Y_pos] = find_worst_violator_new(Y_kappa,Y_kappa_val,[],IN_E,IN_gradient);
         val_list(x) = val;
         Yipos_list(x) = Y_pos;
-        %[kappa_decrease_flag,Y_pos]
         Ymax = Ymax*2-1;
+        
+        
         
     end
      
    
     
     
-    if ~kappa_decrease_flag && 0
+%     if ~kappa_decrease_flag && 0
 %         for i=1:size(Y_kappa_val,1)
 %             for j = 1:size(Y_kappa_val,2)
 %                 s = strrep(sprintf('%d ',(Y_kappa(i,((j-1)*l+1):(j*l))+1)/2),' ','');
@@ -679,10 +697,10 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 %         end
 %         Y_kappa_ind
 %         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
-        [Ymax,~] = majority_voting(Y_kappa,Y_kappa_val,l,Y_tr(x,:));
+%         [Ymax,~] = majority_voting(Y_kappa,Y_kappa_val,l,Y_tr(x,:));
         %Ymax = Y_kappa(1,1:l);
 %         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
-    end
+%     end
 
 %         for i=1:size(Y_kappa_val,1)
 %             for j = 1:size(Y_kappa_val,2)
@@ -773,14 +791,16 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 
     % decide whether to update or not
     
-    if sum(Gmax)>=sum(G0)% && sum(Gmax>=G0) >= T_size %* (1/(max(20-iter,1.2)))
+    
+    if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size
         tau = min(sum(nomi)/sum(denomi),1);
     else
         tau=0;
     end
     tau = max(tau,0);
     
-   
+	GmaxG0_list(x) = sum(Gmax>=G0);
+    GoodUpdate_list(x) = (tau>0);
 
         
     
@@ -1075,7 +1095,9 @@ function profile_update_tr
     global val_list;
     global kappa_list;
     global Yipos_list;
-    
+    global GmaxG0_list;
+    global GoodUpdate_list;
+    global T_size;
 
 
     tm = cputime;
@@ -1100,7 +1122,7 @@ function profile_update_tr
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         %[val_list;Yipos_list;kappa_decrease_flags]
         print_message(...
-            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d Y*pos: %3.2f%% %.2f %.2f %d Yipos: %3.2f%% %.2f %.2f %.2f K: %.2f %.2f %d Margin: %.2f%% %.3f %.3f obj: %.2f gap: %.2f %%',...
+            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d Y*pos: %3.2f%% %.2f %.2f %d Yipos: %3.2f%% %.2f %.2f %.2f K: %.2f %.2f %d Mg: %.2f%% %.3f %.3f obj: %.2f gap: %.2f%% Update %.2f%% %.2f%%',...
             round(tm-profile.start_time),...
             opt_round,...
             profile.n_err,...
@@ -1123,7 +1145,9 @@ function profile_update_tr
             mean(val_list),...
             std(val_list),...
             obj,...
-            (primal_ub-obj)/obj*100),...
+            (primal_ub-obj)/obj*100,...
+            mean(GmaxG0_list)/T_size*100,...
+            sum(GoodUpdate_list)/size(Y_tr,1)*100),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
     end
 end
@@ -1233,6 +1257,10 @@ function [Ypred,YpredVal] = compute_error(Y,Kx)
                     IN_gradient(:,t) = w_phi_e_local_list{t}(((i-1)*4*size(E_list{1},1)+1):i*4*size(E_list{1},1),:);
                 end
                 Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:) = (Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:)+1)/2;
+                
+                
+          
+
                 [Ypred(i,:),YpredVal(i,:),~,~] = ...
                     find_worst_violator_new(...
                     Y_kappa((i:size(Y_kappa,1)/T_size:size(Y_kappa,1)),:),...
@@ -1341,7 +1369,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
     global E_list;
     global m;
     ind_edge_val = cell(4,1);
-    print_message(sprintf('Computing loss vector for %d_th Tree.',t),0);
+    %print_message(sprintf('Computing loss vector for %d_th Tree.',t),0);
     E = E_list{t};
     loss = ones(4,m*size(E,1));
     Te1 = Y(:,E(:,1))'; % the label of edge tail
@@ -1368,6 +1396,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
     end
     Ye = reshape(Ye,4*size(E,1),m);
     loss = loss*0+1;
+    %loss = loss + sqrt(size(E_list{1},1));
     
     return;
 end

@@ -1,20 +1,29 @@
 
+
+
+/* 
+ * forward_alg_omp.c
+ *
+ * Ver 0.0
+ *
+ * March 2014
+ *
+ * Implemented with C OpenMP library of multiple processes.
+ * Input:   gradient, K, edge list, number of labels, node degree, maximum node degree
+ * Output:  score matrix, pointer matrix
+ * Compile into MATLAB function with:
+ *      part of compute_topk_omp.c
+ *
+ */
+
+
 #include "matrix.h"
 #include "mex.h"
 #include "forward_alg_omp.h"
 #include "stdio.h"
 
 
-/* 
- * IMPEMENTED WITH C OPENMP LIBRARY FOR PARALLEL COMPUTATION
- *
- * FORWARD ALGORITHM FOR COMPUTE SCORE MATRIX AND POINTER MATRIX GIVEN GRADIENT
- *
- * PART OF COMPUTE_TOPK_OMP FUNCTION
- */
-
-
-double * forward_alg_omp(double * gradient, int K, double * E, int l, double * node_degree, int max_node_degree)
+double * forward_alg_omp ( double * gradient, int K, double * E, int l, double * node_degree, int max_node_degree )
 {
     /* output */
     double * P_node;
@@ -396,7 +405,7 @@ double * LinearMaxSum(double * M, int M_nrow, int M_ncol, int current_node_degre
 }
 
 
-int compare_structs (const void *a, const void *b)
+int compare_structs ( const void *a, const void *b )
 {    
     t_v2i *struct_a = (t_v2i *) a;
     t_v2i *struct_b = (t_v2i *) b;
@@ -416,7 +425,8 @@ int compare_structs (const void *a, const void *b)
         {return 0;}
     }
 }
-int compare_structs_is (const void *a, const void *b)
+
+int compare_structs_is ( const void *a, const void *b )
 {    
     t_v2is *struct_a = (t_v2is *) a;
     t_v2is *struct_b = (t_v2is *) b;
@@ -429,14 +439,9 @@ int compare_structs_is (const void *a, const void *b)
     {return 0;};
 }
 
-int coo2ind(int x, int y, int len)
-{
-    return x+y*len;
-}
 
 
-
-void printm(double * M, int nrow, int ncol)
+void printm ( double * M, int nrow, int ncol )
 {
     printf("#row: %d #ncol %d\n", nrow,ncol);
     for(int i=0; i<nrow; i++)

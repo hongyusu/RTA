@@ -1,4 +1,20 @@
 
+/* 
+ * compute_topk_omp.c
+ *
+ * Ver 0.0
+ *
+ * March 2014
+ *
+ * Implemented with C OpenMP library of multiple processes.
+ * Input:   edge score, K, edge list, node degree
+ * Output:  multilabels, score of multilabels 
+ * Compile into MATLAB function with the following command :
+ *      mex compute_topk_omp.c forward_alg_omp.c backward_alg_omp.c  CFLAGS="\$CFLAGS -fopenmp" LDFLAGS="\$LDFLAGS -fopenmp" CC="/usr/local/bin/gcc -std=c99"
+ *
+ * There is no memeory lead, last check on 26/03/2014
+ *
+ */
 
 #include "matrix.h"
 #include "mex.h"
@@ -8,19 +24,10 @@
 #include "omp.h"
 #include "math.h"
 
-
-/* Implemented with C OpenMP library for multiple process.
- *
- * compile with:
- *      mex compute_topk_omp.c forward_alg_omp.c backward_alg_omp.c  CFLAGS="\$CFLAGS -fopenmp" LDFLAGS="\$LDFLAGS -fopenmp" CC="/usr/local/bin/gcc -std=c99"
- *
- * use in MATLAB:
- */
-
-void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
+// matlab gateway function
+void mexFunction ( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
-    //printf("+++>compute_topk\n");
-    /* DEFINE INPUT AND OUTPUT */
+    // FOR THE CONVINIENT OF DEALING WITH INPUT AND OUTPUT
     #define IN_gradient         prhs[0]
     #define IN_K                prhs[1]
     #define IN_E                prhs[2]
@@ -28,7 +35,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     #define OUT_Ymax            plhs[0]
     #define OUT_YmaxVal         plhs[1]
     
-    /* INPUT */
+    // INPUT
     // gradient
     double * gradient_i;
     gradient_i = mxGetPr(IN_gradient);
@@ -67,6 +74,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     {
         gradient[ii] = gradient[ii]- min_gradient_val;
     }
+    
     
     // Ymax
     double * Ymax;
@@ -159,11 +167,15 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             if(training_gradient){free(training_gradient);}
         }         
     }
+    free(start_pos);
+    free(stop_pos);
     int tmpK=K;
     if(K>pow(2,nlabel)){tmpK=pow(2,nlabel);}
     //printf("%d\n",tmpK);
     for(int ii=0;ii<tmpK*mm;ii++)
-    {YmaxVal[ii] = YmaxVal[ii]+min_gradient_val*(nlabel-1);}   
+    {
+        YmaxVal[ii] = YmaxVal[ii]+min_gradient_val*(nlabel-1)-(nlabel);
+    }   
    
     if(gradient){free(gradient);}
 }

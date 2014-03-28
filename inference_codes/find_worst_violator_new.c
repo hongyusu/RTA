@@ -1,4 +1,14 @@
 
+/* 
+ * find_worst_violator_new.c
+ *
+ * Ver 0.0
+ *
+ * March 2014
+ *
+ * There is no memeory lead, last check on 26/03/2014
+ *
+ */
 
 #include "matrix.h"
 #include "mex.h"
@@ -7,12 +17,8 @@
 #include "time.h"
 
 
-/*
- *  get worst margin violator from top k list
- *  size of list K*T_size
- */
-
-void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
+// MATLAB GATEWAY FUNCTION
+void mexFunction ( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
     #define IN_Y_kappa          prhs[0] // MATRIX OF MULTILABELS
     #define IN_Y_kappa_val      prhs[1] // MATRIX OF MULTILABEL SCORES
@@ -160,8 +166,8 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     {
         Ytmp = (double *) malloc (sizeof(double) * nlabel);
         for(int kk=0;kk<nlabel;kk++)
-        {Ytmp[kk] = Y_kappa[kk];}
-
+        {Ytmp[kk] = Y[kk];}
+        //printm(Ytmp,1,10);
         for(int tt=0; tt<Y_kappa_val_nrow; tt++)
         {
             double * EEtmp;
@@ -175,11 +181,15 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
             for(int ll=0;ll<(nlabel-1)*4;ll++)
             {ggradienttmp[ll] = gradient[tt*4*(nlabel-1)+ll];}
             // UPDATE F
+            //printm(gradient,1,36);
+            //printm(EEtmp,9,2);
             F_Y += Y2Fy(Ytmp, EEtmp, ggradienttmp, nlabel); 
             free(ggradienttmp);
             free(EEtmp);
         }
         free(Ytmp);
+        //printf("--%.4f\n",F_Y);
+
     }
 //     // get average position
 //     double Y_pos_avg = 0;
@@ -212,7 +222,7 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     double theta_K=0;
     for(int ii=0;ii<Y_kappa_val_nrow;ii++)
     {theta_K += Y_kappa_val[ii+(Y_kappa_val_ncol-1)*Y_kappa_val_nrow];}
-    theta_K -= nlabel*Y_kappa_val_nrow;
+    //theta_K -= nlabel*Y_kappa_val_nrow;
     // DEFINE THE MAXIMUM DEPTH
     int theta_ncol=Y_kappa_val_ncol-1;
     
@@ -332,12 +342,12 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     {*(mxGetPr(OUT_break_flag)) = cur_col+1;}
     *(mxGetPr(OUT_Y_pos)) = Y_pos;
     //printf("%.3f \n",Y_pos+1);
-    //printf("%d %.2f %d : %.3f %.3f %.3f\n",find, Y_pos+1,cur_col+1,F_Y,best_F,F_Y-best_F);
+    //printf("\n%d %.2f %d : %.3f %.3f %.3f\n",find, Y_pos+1,cur_col+1,F_Y,best_F,F_Y-best_F);
     
 }
 
 // GIVEN MULTILABEL AND GRADIENT, COMPUTE THE FUNCTUON VALUE
-double Y2Fy(double *Y, double * E, double * gradient, double nlabel)
+double Y2Fy ( double *Y, double * E, double * gradient, double nlabel )
 {
     double * mu;
     double Fy;
@@ -347,6 +357,9 @@ double Y2Fy(double *Y, double * E, double * gradient, double nlabel)
     for(int i=0;i<(int)nlabel-1;i++)
     {mu[ 4*i+(int)Y[(int)E[i]-1]*2+(int)Y[(int)E[i+(int)(nlabel-1)]-1] ] = 1.0;}
     // COMPUTE MU*GRADIENT
+    //printm(gradient,4,9);
+    //printm(Y,1,10);
+    //printm(mu,4,9);
     for(int i=0;i<(nlabel-1)*4;i++)
     {Fy += mu[i]*gradient[i];}
     // RETURN RESULTS
@@ -355,7 +368,7 @@ double Y2Fy(double *Y, double * E, double * gradient, double nlabel)
 }
 
 // GIVEM POINTER AND DIMENTION, PRINT OUT MATRIX
-void printm(double * M, int nrow, int ncol)
+void printm ( double * M, int nrow, int ncol )
 {
     printf("#row: %d #ncol %d\n", nrow,ncol);
     for(int i=0; i<nrow; i++)
