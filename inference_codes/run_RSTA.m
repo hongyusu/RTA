@@ -161,7 +161,6 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         E=sortrows(E,[1,2]); % sort by head and tail
         Elist{i}=RootTree(E); % put into cell array
         
-        Elist{i} = Elist{1};
 %         if i~=1
 %             Elist{i}=Elist{1};
 %             pos = randsample(2:(size(Elist{1},1)),1);

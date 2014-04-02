@@ -213,7 +213,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             nflip = nflip - 1;
         end
         % update current best solution
-        if profile.n_err_microlbl < best_n_err_microlbl
+        if profile.n_err_microlbl < best_n_err_microlbl || 1
             best_n_err_microlbl=profile.n_err_microlbl;
             best_iter = iter;
             best_kappa = kappa;
@@ -676,17 +676,24 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
 %         IN_gradient = IN_gradient(:,1);
         
 
-        [Ymax, val, kappa_decrease_flag,Y_pos] = find_worst_violator_new(Y_kappa,Y_kappa_val,Yi,IN_E,IN_gradient);
+%reshape(IN_gradient,4,13)
+
+
+
+%reshape(mu_list{1}(:,x),4,13)
+
+        [Ymax, val, kappa_decrease_flag,Yi_pos] = find_worst_violator_new(Y_kappa,Y_kappa_val,Yi,IN_E,IN_gradient);
         val_list(x) = val;
-        Yipos_list(x) = Y_pos;
+        Yipos_list(x) = Yi_pos;
         Ymax = Ymax*2-1;
         
         
         
     end
      
-   
-    
+%    if iter ==20 && x==2
+%         adfasd
+%    end
     
 %     if ~kappa_decrease_flag && 0
 %         for i=1:size(Y_kappa_val,1)
@@ -801,7 +808,8 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     
 	GmaxG0_list(x) = sum(Gmax>=G0);
     GoodUpdate_list(x) = (tau>0);
-
+    
+    
         
     
     
@@ -831,6 +839,9 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu = reshape(mu,4*size(E,1),1);
         mu_list{t}(:,x) = mu;
     end
+    
+    
+
     
     return;
 end
@@ -1137,7 +1148,7 @@ function profile_update_tr
             sum(Yipos_list>0)/size(Y_tr,1)*100,...
             mean(Yipos_list(Yipos_list>0)),...
             std(Yipos_list(Yipos_list>0)),...
-            max(Yipos_list(Yipos_list>0)),...
+            min(Yipos_list(Yipos_list>0)),...
             mean(kappa_list),...
             std(kappa_list),...
             max(kappa_list),...
