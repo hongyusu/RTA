@@ -195,35 +195,36 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
                 kappa = max(ceil(kappa/2),kappa_MIN);
             end
         end
-        
+        %GmaxG0_list
         %kappa_decrease_flags
         %Yipos_list
-        
         %obj_list
-        progress_made = (obj >= prev_obj);  
-        prev_obj = obj;
-        if PAR
-            par_compute_duality_gap;        % duality gap
-        else
-            compute_duality_gap;
-        end
-        profile_update_tr;          % profile update for training
-        % update flip number
-        if profile.n_err_microlbl > profile.n_err_microlbl_prev
-            nflip = nflip - 1;
-        end
-        % update current best solution
-        if profile.n_err_microlbl < best_n_err_microlbl || 1
-            best_n_err_microlbl=profile.n_err_microlbl;
-            best_iter = iter;
-            best_kappa = kappa;
-            best_mu_list=mu_list;
-            best_Kxx_mu_x_list=Kxx_mu_x_list;
-            best_Rmu_list=Rmu_list;
-            best_Smu_list=Smu_list;
-            best_norm_const_quadratic_list = norm_const_quadratic_list;
-        end
         
+        if mod(iter, 5)==0
+            progress_made = (obj >= prev_obj);  
+            prev_obj = obj;
+            if PAR
+                par_compute_duality_gap;        % duality gap
+            else
+                compute_duality_gap;
+            end
+            profile_update_tr;          % profile update for training
+            % update flip number
+            if profile.n_err_microlbl > profile.n_err_microlbl_prev
+                nflip = nflip - 1;
+            end
+            % update current best solution
+            if profile.n_err_microlbl < best_n_err_microlbl || 1
+                best_n_err_microlbl=profile.n_err_microlbl;
+                best_iter = iter;
+                best_kappa = kappa;
+                best_mu_list=mu_list;
+                best_Kxx_mu_x_list=Kxx_mu_x_list;
+                best_Rmu_list=Rmu_list;
+                best_Smu_list=Smu_list;
+                best_norm_const_quadratic_list = norm_const_quadratic_list;
+            end
+        end
     end
     
 
