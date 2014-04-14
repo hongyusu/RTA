@@ -30,7 +30,7 @@ def run():
   is_main_run=2
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
-  filenames=['toy10','emotions','yeast','medical','scene','enron','toy50','AD10','AD30','AD50']#,'fp','cancer','cal500']
+  filenames=['toy10','emotions','yeast','medical','scene','enron','toy50','ArD10','AD15','AD30','AD50']#,'fp','cancer','cal500']
   n=0
   for kth_fold in ['1']:#,'2','3','4','5']:
     for filename in filenames:

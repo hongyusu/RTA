@@ -38,7 +38,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global GmaxG0_list;
     global GoodUpdate_list;
     
-    
+    rand('twister', 0);
     
     
     if T_size >= 20
@@ -171,7 +171,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_decrease_flags = zeros(1,m);
         Yipos_list = zeros(1,m);
         val_list = zeros(1,m);
-        for xi = 1:m
+        for xi = randsample(1:m,m)
+        %for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
