@@ -135,7 +135,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     
     mmcrf_c = 1;
     mmcrf_g = -10000;%0.01;
-    mmcrf_i = 60;
+    mmcrf_i = 80;
     mmcrf_maxkappa = eval(maxkappa);
     % display something
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);

@@ -171,6 +171,15 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         kappa_decrease_flags = zeros(1,m);
         Yipos_list = zeros(1,m);
         val_list = zeros(1,m);
+        
+%         if mod(iter,30)<=1
+%             tmpind = 1:m;
+%         else
+%             tmpind = repmat(find(GoodUpdate_list>0),1,1);
+%         end
+%         fprintf(' %d',numel(tmpind));
+%         
+        %for xi = randsample(tmpind, numel(tmpind))
         for xi = randsample(1:m,m)
         %for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
@@ -201,7 +210,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %Yipos_list
         %obj_list
         
-        if mod(iter, 5)==0
+        if mod(iter, 10)==0
             progress_made = (obj >= prev_obj);  
             prev_obj = obj;
             if PAR
