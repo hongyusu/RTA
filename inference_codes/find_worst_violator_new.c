@@ -1,16 +1,43 @@
 
 /* 
- * find_worst_violator_new.c
+ * MATLAB C GATEWAY FUNCTON:   
+ *      find_worst_violator_new.c
+ *
+ * Compile wth:
+ *      mex find_worst_violator_new.c
  *
  * Ver 0.0
  *
  * March 2014
  *
- * No memeory lead, last check on 26/03/2014
+ * Input:
+ *      1. Y_kappa:
+ *          matrix of K*|Y||T| dimension, containing K best multilabel from all tree
+ *      2. Y_kappa_val:
+ *          matrix of K*|T| dimension, contain score of the K best multlabel from all tree
+ *      3. Y:
+ *          in training, correct multilabel for the example
+ *          in testing, empty
+ *      4. E:
+ *          edge list of the all trees pooled together
+ *      5. gradient
+ *          gradient of all trees pooled together
+ *
+ * Output:
+ *      1. Ymax:
+ *          best multilabel from the k best list
+ *      2. YmaxVal:
+ *          score of the best multilabel
+ *      3. break_flag:
+ *          if the best multilabel is found evidentally, meaning the score of the multilabel is higher than the threshold
+ *      4. Yi_pos:
+ *          median position of best multilabel
  *
  * Note:
- *      1. median function is implemented by qsort, could be improved with a O(n) algorithm
- *      2. searching K best list for Y* is improved with algorithm that increases threshold
+ *      1. No memeory lead, last check on 26/03/2014
+ *      2. Median function is implemented by qsort, could be improved with a O(n) algorithm
+ *      3. Searching K best list for Y* is improved with algorithm that increases threshold
+ *      4. Add annotation on 25/04/2014
  *
  */
 

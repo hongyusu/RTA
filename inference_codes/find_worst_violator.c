@@ -1,14 +1,13 @@
 
 
-#include "matrix.h"
-#include "mex.h"
-#include "find_worst_violator.h"
-#include "stdio.h"
-#include "time.h"
-
-
-
-/* The gateway function 
+/*
+ * 
+ * Ver 0.0
+ *
+ * MATLAB gateway function: find_worst_violator.c
+ *
+ * March 2014
+ *
  * Input:
  *      1. Y_kappa:K*|T||Y| matrix of multilabels
  *      2. Y_kappa_val: K*|T| matrix of scores
@@ -17,6 +16,14 @@
  *      2. YmaxVal: score of the multilabel
  *      3. break_flag: the best multilabel can be found evidentally 
  */
+
+
+#include "matrix.h"
+#include "mex.h"
+#include "find_worst_violator.h"
+#include "stdio.h"
+#include "time.h"
+
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
     //printf("--> in to worst\n");
