@@ -65,9 +65,11 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     isTest = eval(isTest);
     kth_fold = eval(kth_fold);
     l_norm = eval(l_norm);
-    % get search path
+    
+    % add search path
     addpath('../shared_scripts/');  
-    % get current hostname
+    
+    % get current hostname to be able to run on cluster
     [~,comres]=system('hostname');
     if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
         X=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_features',filename));
@@ -83,6 +85,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     Xsum=sum(X,2);
     X=X(Xsum~=0,:);
     Y=Y(Xsum~=0,:);
+    
     % label selection with two classes
     Yuniq=zeros(1,size(Y,2));
     for i=1:size(Y,2)
@@ -90,31 +93,24 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
             Yuniq(i)=i;
         end
     end
-    
     Y=Y(:,Yuniq(Yuniq~=0));
     
     
-
-
-    %% feature normalization (tf-idf for text data, scale and centralization for other numerical features)
+    % feature normalization (tf-idf for text data, scale and centralization for other numerical features)
     if or(strcmp(filename,'medical'),strcmp(filename,'enron')) 
         X=tfidf(X);
     elseif ~(strcmp(filename(1:2),'to'))
         X=(X-repmat(min(X),size(X,1),1))./repmat(max(X)-min(X),size(X,1),1);
     end
 
-    %% change Y from -1 to 0: labeling (0/1)
+    % change Y from -1 to 0: labeling (0/1)
     Y(Y==-1)=0;
 
     % stratified cross validation index
     nfold = 5;
-    % n-fold index
-    %Ind = repmat([1:nfold],1,10000);
-    %Ind = Ind(1:size(Y,1));
     Ind = getCVIndex(Y,nfold);
 
-
-    %% get dot product kernels from normalized features or just read precomputed kernels
+    % get dot product kernels from normalized features or just read precomputed kernels
     if or(strcmp(filename,'fpuni'),strcmp(filename,'cancer'))
         if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
             K=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_kernel',filename));
@@ -126,6 +122,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         K = K ./ sqrt(diag(K)*diag(K)');    %normalization diagonal is 1
     end
 
+    
     %% select part of the data for code sanity check
     ntrain = 100;
     if isTest==1
@@ -134,11 +131,6 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         K=K(1:ntrain,1:ntrain);
         Ind=Ind(1:ntrain);
     end
-    
-    %Y=Y(:,1:20);
-    
-
-    
 
 
     %% parameter selection
@@ -161,16 +153,14 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     mmcrf_g = -10000;%0.01;
     mmcrf_i = 60;
     mmcrf_maxkappa = eval(maxkappa);
-    % display something
+    
+    % display parameters
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
     
     %% generate random graph
-    rand('twister', 0);
-    % generate random graph (guess 200 base learner should be enough)
-    
+    rand('twister', 0);    
     
     Nrep=t;
-    
     
     Nnode=size(Y,2);
     Elist=cell(Nrep,1);
@@ -184,7 +174,8 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         E=[E,min(E')',max(E')'];E=E(:,3:4); % arrange head and tail
         E=sortrows(E,[1,2]); % sort by head and tail
         Elist{i}=RootTree(E); % put into cell array
-        
+      
+% construct similar spanning tree        
 %         if i~=1
 %             Elist{i}=Elist{1};
 %             pos = randsample(2:(size(Elist{1},1)),1);
@@ -194,12 +185,11 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         
         
     end
+    
     % pick up one random graph
     E=Elist{t};
-    % running
-    perfRand=[];
-    perfValEns=[];
-    perfBinEns=[];
+    
+    % variable to keep results
     Ypred=zeros(size(Y));
     YpredVal=zeros(size(Y));
     running_times=zeros(nfold,1);

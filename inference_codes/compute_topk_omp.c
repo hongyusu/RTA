@@ -7,12 +7,39 @@
  * March 2014
  *
  * Implemented with C OpenMP library of multiple processes.
- * Input:   edge score, K, edge list, node degree
- * Output:  multilabels, score of multilabels 
+ *
+ * Input:   
+ *      1. edge score: 
+ *          (1) edge score matrix of 4*|E| dimension, rows are score of --,-+,+-,++, columns are edges
+ *          (2) reshape into 4|E|*1 dimension
+ *      2. K: depth of the k best list
+ *      3. edge list: marix of |E|*2 dimension, processed by 'roottree function' in run_RSTA.m , example:
+ * E =
+ *    1    13
+ *   13     9
+ *    9     8
+ *    8     5
+ *    8    12
+ *    5     2
+ *   12     7
+ *   12    10
+ *    7     3
+ *    7     4
+ *   10     6
+ *    4    11
+ *      4. node degree: matrix of 1*|V| dimension, example:
+ * node_degree =
+ *     1     1     1     2     2     1     3     3     2     2     1     3     2
+ *
+ * Output:
+ *      1.multilabels: k best multilabels, matrix of |Y|*K
+ *      2.score of multilabels : k best score, matrix of 1*K
+ *
  * Compile into MATLAB function with the following command :
  *      mex compute_topk_omp.c forward_alg_omp.c backward_alg_omp.c  CFLAGS="\$CFLAGS -fopenmp" LDFLAGS="\$LDFLAGS -fopenmp" CC="/usr/local/bin/gcc -std=c99"
  *
- * There is no memeory lead, last check on 26/03/2014
+ * NOTE:
+ *      There is no memeory lead, last check on 26/03/2014
  *
  */
 

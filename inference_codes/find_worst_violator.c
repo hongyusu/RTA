@@ -10,12 +10,12 @@
 
 /* The gateway function 
  * Input:
- *      Y_kappa
- *      Y_kappa_val
+ *      1. Y_kappa:K*|T||Y| matrix of multilabels
+ *      2. Y_kappa_val: K*|T| matrix of scores
  * Output:
- *      Ymax
- *      YmaxVal
- *      break_flag
+ *      1. Ymax: 1*K matrix of best multilabel
+ *      2. YmaxVal: score of the multilabel
+ *      3. break_flag: the best multilabel can be found evidentally 
  */
 void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
