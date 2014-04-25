@@ -816,6 +816,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         tau=0;
     end
     tau = max(tau,0);
+   
     
 	GmaxG0_list(x) = sum(Gmax>=G0);
     GoodUpdate_list(x) = (tau>0);

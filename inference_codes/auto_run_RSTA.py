@@ -27,10 +27,10 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run=2
+  is_main_run=1
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
-  filenames=['toy10','emotions','yeast','medical','scene','enron','toy50','ArD10','ArD15','ArD20','ArD30','ArD50']#,'fp','cancer','cal500']
+  filenames=['toy10','emotions','yeast','medical','scene','enron','toy50','ArD10','ArD15','ArD20','ArD30']#,'fp','cancer','cal500']
   n=0
   for kth_fold in ['1']:#,'2','3','4','5']:
     for filename in filenames:
