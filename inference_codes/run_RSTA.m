@@ -1,13 +1,32 @@
 
 %%
-% running MMCRF on one dataset with random tree / random pair graph as
-% output graph structure connecting multiple output labels
-function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
-% 
-% mex forward_alg.c
-% mex backward_alg.c
-% mex find_worst_violator.c
+%
+% COMPILE WITH:
+%   mex compute_topk_omp.c forward_alg_omp.c backward_alg_omp.c  CFLAGS="\$CFLAGS -fopenmp" LDFLAGS="\$LDFLAGS -fopenmp" CC="/usr/local/bin/gcc -std=c99"
+%   mex find_worst_violator_new.c
+%
+%
+% PARAMETERS:
+%   filename: prefix of the input file
+%   graph_type: spanning tree or random pair graph
+%   t: number of trees
+%   isTest: TRUE to select small portion of data for testing purpose
+%   kth_fold: kth fold of five fold CV
+%   l_norm: '1'->l1 norm regularization, '2'->l2 norm regularization
+%   maxkappa: the length of K best list
+%
+%
+% EXAMPLE:
+%   run_RSTA('ArD15','tree','5','1','1','2','2')
+%   this will run the algorithm
+%   on ArD15 dataset, with random spanning tree as output structure,
+%   generating 5 random spanning tree, selecting small portion of data for
+%   testing, running first fold of five fold CV, with l2 norm
+%   regularization, bulding K best list with K=2
+%
+%
 
+function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
 
     %% tackle input parameters
     if nargin <1
@@ -24,19 +43,24 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         isTest = '0';
     end
     if nargin < 5
-        kth_fold='1';
+        kth_fold = '1';
     end
     if nargin < 6
-        l_norm='2'
+        l_norm = '2'
+    end
+    if nargin < 7
+        maxkappa = '2';
     end
     
     % set random number seed
     rand('twister', 0);
+    
     % suffix for write result files
     suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_RSTAr', filename,graph_type,t,kth_fold,l_norm,maxkappa);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
-    %
+    
+    % convert from string to numerical
     t=eval(t);
     isTest = eval(isTest);
     kth_fold = eval(kth_fold);
