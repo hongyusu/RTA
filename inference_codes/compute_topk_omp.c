@@ -1,45 +1,60 @@
 
 /* 
- * compute_topk_omp.c
  *
  * Ver 0.0
  *
+ * MATLAB gateway function: compute_topk_omp.c
+ *
  * March 2014
  *
- * Implemented with C OpenMP library of multiple processes.
+ * Implemented with C OpenMP library for multiple processes.
+ *
+ * Given edge list of a single tree as well as score that corresponds to the edge labels --,-+,+-,++, compute the K best multilabel that maximizes the sums of edge score.
  *
  * Input:   
  *      1. edge score: 
- *          (1) edge score matrix of 4*|E| dimension, rows are score of --,-+,+-,++, columns are edges
- *          (2) reshape into 4|E|*1 dimension
- *      2. K: depth of the k best list
- *      3. edge list: marix of |E|*2 dimension, processed by 'roottree function' in run_RSTA.m , example:
- * E =
- *    1    13
- *   13     9
- *    9     8
- *    8     5
- *    8    12
- *    5     2
- *   12     7
- *   12    10
- *    7     3
- *    7     4
- *   10     6
- *    4    11
- *      4. node degree: matrix of 1*|V| dimension, example:
- * node_degree =
- *     1     1     1     2     2     1     3     3     2     2     1     3     2
+ *          (1) edge score matrix of 4*|E| dimension, where rows are score of edge labels --,-+,+-,++, columns are edges,
+ *          (2) reshape the edge score matrix into 4|E|*1 dimension
+ *      2. K: 
+ *          the number of best multilabel from a single tree
+ *      3. edge list: 
+ *          marix of |E|*2 dimension, processed by 'roottree function' in run_RSTA.m , example:
+ *           E =
+ *              1    13
+ *             13     9
+ *              9     8
+ *              8     5
+ *              8    12
+ *              5     2
+ *             12     7
+ *             12    10
+ *              7     3
+ *              7     4
+ *             10     6
+ *              4    11
+ *      4. node degree: 
+ *          matrix of 1*|V| dimension, example:
+ *           node_degree =
+ *               1     1     1     2     2     1     3     3     2     2     1     3     2
  *
  * Output:
- *      1.multilabels: k best multilabels, matrix of |Y|*K
- *      2.score of multilabels : k best score, matrix of 1*K
+ *      1. multilabels: 
+ *          k best multilabels, matrix of |Y|*K
+ *      2. score of multilabels:
+ *          k best score, matrix of 1*K
+ *
+ * Example usage in matlab:
+ *      [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
  *
  * Compile into MATLAB function with the following command :
  *      mex compute_topk_omp.c forward_alg_omp.c backward_alg_omp.c  CFLAGS="\$CFLAGS -fopenmp" LDFLAGS="\$LDFLAGS -fopenmp" CC="/usr/local/bin/gcc -std=c99"
  *
  * NOTE:
- *      There is no memeory lead, last check on 26/03/2014
+ *      1. There is no memeory lead, last check on 26/03/2014
+ *      2. Add detailed comment on 25/04/2014
+ *
+ *
+ *
  *
  */
 
