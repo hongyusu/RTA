@@ -3,6 +3,9 @@
 
 
 
+
+Random spanning tree approximation in L2 norm regularization for structured output prediction.
+
 Please start with run_RSTA.m.
 
 To compile the code, please make sure you have gcc compiler that supports OMP. The C codes can be compile with the following commands (note that you might need to change the path of gcc compiler)

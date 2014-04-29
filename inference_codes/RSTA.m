@@ -8,7 +8,7 @@
 %
 %
 function [rtn, ts_err] = RSTA(paramsIn, dataIn)
-    %% define global variables
+    %% Definition of global variables
     global loss_list;   % losses associated with different edge labelings
     global mu_list;     % marginal dual varibles: these are the parameters to be learned
     global E_list;      % edges of the Markov network e_i = [E(i,1),E(i,2)];
