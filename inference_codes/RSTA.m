@@ -151,6 +151,10 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     best_Rmu_list=Rmu_list;
     best_Smu_list=Smu_list;
     best_norm_const_quadratic_list = norm_const_quadratic_list;
+    
+    
+    Yipos_list = ones(1,m);
+    
     %% loop through examples
     while(opt_round < params.maxiter)
 %     while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
@@ -172,21 +176,17 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
             norm_const_quadratic_list = norm_const_quadratic_list /  sum(norm_const_quadratic_list);    
         end
         
-        % iterate over examples 
+        %% iterate over examples 
         iter = iter +1;   
         kappa_decrease_flags = zeros(1,m);
-        Yipos_list = zeros(1,m);
+        %Yipos_list = ones(1,m);
         val_list = zeros(1,m);
-        
-%         if mod(iter,30)<=1
-%             tmpind = 1:m;
-%         else
-%             tmpind = repmat(find(GoodUpdate_list>0),1,1);
-%         end
-%         fprintf(' %d',numel(tmpind));
-%         
-        %for xi = randsample(tmpind, numel(tmpind))
-        for xi = randsample(1:m,m)
+
+        if mode(iter,3) <= 30
+            Yipos_list = ones(1,m);
+        end
+        for xi = randsample(1:m,m,true,Yipos_list/sum(Yipos_list))
+        %for xi = randsample(1:m,m)
         %for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
@@ -211,12 +211,14 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
                 kappa = max(ceil(kappa/2),kappa_MIN);
             end
         end
+        
+        %[kappa_decrease_flags;Yipos_list]
         %GmaxG0_list
         %kappa_decrease_flags
         %Yipos_list
         %obj_list
         
-        if mod(iter, 1)==0
+        if mod(iter, 20)==0
             progress_made = (obj >= prev_obj);  
             prev_obj = obj;
             if PAR
