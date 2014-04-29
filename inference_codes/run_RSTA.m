@@ -28,7 +28,7 @@
 
 function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
 
-    %% tackle input parameters
+    %% Process input parameters
     if nargin <1
         disp('Not enough input parameters!')
         return;
@@ -52,25 +52,28 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         maxkappa = '2';
     end
     
-    % set random number seed
+    % Set seed of random number
     rand('twister', 0);
     
-    % suffix for write result files
+    % Set suffix of the result files
     suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_RSTAr', filename,graph_type,t,kth_fold,l_norm,maxkappa);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     
-    % convert from string to numerical
+    % Convert parameters from string to numerical
     t=eval(t);
     isTest = eval(isTest);
     kth_fold = eval(kth_fold);
     l_norm = eval(l_norm);
+    maxkappa = eval(maxkappa);
     
-    % add search path
+    % Add search path
     addpath('../shared_scripts/');  
     
-    % get current hostname to be able to run on cluster
+    % Get current hostname to be able to run on cluster
     [~,comres]=system('hostname');
+    
+    % Read in X and Y matrix
     if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
         X=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_features',filename));
         Y=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_targets',filename));
@@ -78,9 +81,8 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         X=dlmread(sprintf('../shared_scripts/test_data/%s_features',filename));
         Y=dlmread(sprintf('../shared_scripts/test_data/%s_targets',filename));
     end
-
-
-    %% data preprocessing
+    
+    %% Process input data X and Y matrix
     % select example with features that make sense
     Xsum=sum(X,2);
     X=X(Xsum~=0,:);
@@ -95,7 +97,6 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     end
     Y=Y(:,Yuniq(Yuniq~=0));
     
-    
     % feature normalization (tf-idf for text data, scale and centralization for other numerical features)
     if or(strcmp(filename,'medical'),strcmp(filename,'enron')) 
         X=tfidf(X);
@@ -105,10 +106,6 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
 
     % change Y from -1 to 0: labeling (0/1)
     Y(Y==-1)=0;
-
-    % stratified cross validation index
-    nfold = 5;
-    Ind = getCVIndex(Y,nfold);
 
     % get dot product kernels from normalized features or just read precomputed kernels
     if or(strcmp(filename,'fpuni'),strcmp(filename,'cancer'))
@@ -122,8 +119,11 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         K = K ./ sqrt(diag(K)*diag(K)');    %normalization diagonal is 1
     end
 
+    %% Stratified n fold cross validation index
+    nfold = 5;
+    Ind = getCVIndex(Y,nfold);
     
-    %% select part of the data for code sanity check
+    %% Select part of the data for code sanity check
     ntrain = 100;
     if isTest==1
         X=X(1:ntrain,:);
@@ -132,10 +132,9 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         Ind=Ind(1:ntrain);
     end
 
-
-    %% parameter selection
+    %% Parameter selection
+    % TODO: to be better implemented
     % ues results from parameter selection, otherwise use fixed parameters
-
     para_n=11;
     parameters=zeros(para_n,10);
     for i=1:para_n
@@ -149,10 +148,11 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     parameters=sortrows(parameters,[3,2]);
     mmcrf_c = parameters(para_n,2);
     
+    % currently use following parameters
     mmcrf_c = 1;
     mmcrf_g = -10000;%0.01;
     mmcrf_i = 60;
-    mmcrf_maxkappa = eval(maxkappa);
+    mmcrf_maxkappa = maxkappa;
     
     % display parameters
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
@@ -189,7 +189,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     % pick up one random graph
     E=Elist{t};
     
-    % variable to keep results
+    %% variable to keep results
     Ypred=zeros(size(Y));
     YpredVal=zeros(size(Y));
     running_times=zeros(nfold,1);
@@ -247,12 +247,12 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     % auc & roc random model
     [acc,vecacc,pre,rec,f1,auc1,auc2]=get_performance(Y(Itest,:),(Ypred(Itest,:)==1),YpredVal(Itest));
     perf = [acc,vecacc,pre,rec,f1,auc1,auc2,norm_const_quadratic_list]
-    if ~isTest
-    %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
-    save(sprintf('../outputs/%s.mat', paramsIn.filestem), 'perf','Ypred', 'YpredVal', 'running_times', 'muList','norm_const_quadratic_list');
-    system(sprintf('mv /var/tmp/%s.log ../outputs/', suffix));
-
     
+    %% Close matlab process if it's not test run, otherwise keep matlab process alive
+    if ~isTest
+        %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
+        save(sprintf('../outputs/%s.mat', paramsIn.filestem), 'perf','Ypred', 'YpredVal', 'running_times', 'muList','norm_const_quadratic_list');
+        system(sprintf('mv /var/tmp/%s.log ../outputs/', suffix));    
         exit
     end
 end

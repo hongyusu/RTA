@@ -1,7 +1,12 @@
 
 
 
-%% Random spanning tree approximation (RSTA) for structural output prediction
+%% 
+%
+% Random Spanning Tree Approximation for Structured Output Prediction
+%
+%
+%
 function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     %% define global variables
     global loss_list;   % losses associated with different edge labelings
@@ -147,11 +152,12 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     best_Smu_list=Smu_list;
     best_norm_const_quadratic_list = norm_const_quadratic_list;
     %% loop through examples
-    while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
-            progress_made == 1 && ...                   % make progress
-            nflip > 0 && ...                            % number of flips
-            opt_round < params.maxiter ...              % within iteration limitation
-            )
+    while(opt_round < params.maxiter)
+%     while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
+%             progress_made == 1 && ...                   % make progress
+%             nflip > 0 && ...                            % number of flips
+%             opt_round < params.maxiter ...              % within iteration limitation
+%             )
         opt_round = opt_round + 1;
         
         % update lambda / quadratic term
@@ -210,7 +216,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %Yipos_list
         %obj_list
         
-        if mod(iter, 10)==0
+        if mod(iter, 1)==0
             progress_made = (obj >= prev_obj);  
             prev_obj = obj;
             if PAR
@@ -810,12 +816,15 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     % decide whether to update or not
     
     
-    if sum(Gmax)>=sum(G0) %&& sum(Gmax>=G0) >= T_size
+    if sum(Gmax)>=sum(G0)
         tau = min(sum(nomi)/sum(denomi),1);
     else
         tau=0;
     end
     tau = max(tau,0);
+    
+    
+    %disp([tau,sum(nomi)/sum(denomi),nomi./denomi])
    
     
 	GmaxG0_list(x) = sum(Gmax>=G0);
