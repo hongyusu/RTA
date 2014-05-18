@@ -3,7 +3,8 @@
 
 %% 
 %
-% Random Spanning Tree Approximation for Structured Output Prediction
+% L2 norm combination of predictors which are defined on a set of random
+% spanning trees.
 %
 %
 %
@@ -132,9 +133,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     profile_update_tr;
        
     
-    %% iterate until converge
+    %% Iteration over examples untile convergece ?
     % parameters
-    
     obj_list = zeros(1,T_size);
     prev_obj = 0;
     
@@ -155,7 +155,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     Yipos_list = ones(1,m);
     
-    %% loop through examples
+    %% Iterate over training examples until convergence 
     while(opt_round < params.maxiter)
 %     while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
 %             progress_made == 1 && ...                   % make progress
@@ -185,9 +185,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         if mode(iter,3) <= 30
             Yipos_list = ones(1,m);
         end
-        for xi = randsample(1:m,m,true,Yipos_list/sum(Yipos_list))
+        %for xi = randsample(1:m,m,true,Yipos_list/sum(Yipos_list))
         %for xi = randsample(1:m,m)
-        %for xi = 1:m
+        for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
@@ -242,8 +242,12 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
                 best_Smu_list=Smu_list;
                 best_norm_const_quadratic_list = norm_const_quadratic_list;
             end
+            %mu_list{1}
         end
+        
+        
     end
+    
     
 
     %% last optimization iteration
@@ -353,7 +357,9 @@ function Kmu_x = compute_Kmu_x(x,Kx,E,ind_edge_val,Rmu,Smu)
 end
 
 
-%% compute relative duality gap
+%%
+% Function to compute ralative duality gap.
+%
 function compute_duality_gap
     %% parameter
     global T_size;
@@ -377,9 +383,8 @@ function compute_duality_gap
     Y_kappa = zeros(size(Y,1)*T_size,size(Y,2)*kappa);
     Y_kappa_val = zeros(size(Y,1)*T_size,kappa);
     
-    %% rewrite
     %%
-    % get 'k' best prediction from each spanning tree
+    % Get k best prediction from each random spanning tree
     Kmu_list_local = cell(1,T_size);
     gradient_list_local = cell(1,T_size);
     for t=1:T_size
@@ -400,57 +405,14 @@ function compute_duality_gap
             node_degree(i) = sum(sum(E==i));
         end
         in_gradient = reshape(gradient,numel(gradient),1);
-        [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
-        %[Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
         
+        [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
         
         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
     end
-    %%
-%     Kmu_list_local = cell(1,T_size);
-%     gradient_list_local = cell(1,T_size);
-%     node_degree_mat = zeros(T_size,size(E_list{1},1));
-%     gradient_mat = zeros(4*size(E_list{1},1)*size(Kx_tr,1),T_size);
-%     for t=1:T_size
-%         loss = loss_list{t};
-%         E = E_list{t};
-%         mu = mu_list{t};
-%         ind_edge_val = ind_edge_val_list{t};
-%         loss = reshape(loss,4,size(E,1)*m);
-%         Kmu_list_local{t} = compute_Kmu(Kx_tr,mu,E,ind_edge_val);
-%         Kmu_list_local{t} = reshape(Kmu_list_local{t},4,size(E,1)*m);
-%         Kmu = Kmu_list_local{t};
-%         gradient_list_local{t} = norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu;
-%         gradient = gradient_list_local{t};
-%                  
-%         l=size(E,1)+1;
-%         node_degree = zeros(1,l);
-%         for i=1:l
-%             node_degree(i) = sum(sum(E==i));
-%         end
-%         
-%         gradient_mat(:,t) = reshape(gradient,numel(gradient),1);
-%         node_degree(t,:) = node_degree
-%     end
-%     
-%     
-%     
-%         [Y_tmp,Y_tmp_val] = compute_topk_omp(in_gradient,kappa,E,node_degree);
-%         %[Y_tmp,Y_tmp_val] = compute_topk(gradient,kappa,E);
-%         
-%         
-%         Y_kappa(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp;
-%         Y_kappa_val(((t-1)*size(Y,1)+1):(t*size(Y,1)),:) = Y_tmp_val;
-%     end
     
-    %%
-    %% rewrite
-    %%
-    
-    
-    
-    %% get top '1' prediction by analyzing predictions from all trees
+    %% Get the worst violator from the K best predictions
     for i=1:size(Y,1)
         if iter==0
             kappa_decrease_flag = 1;
@@ -483,24 +445,54 @@ function compute_duality_gap
     clear Y_kappa;
     clear Y_kappa_val;
     
-    %% duality gaps over trees
+    %% Compute duality gap of all training examples from each random spanning tree.
+    % Define variable to save finial results.
     dgap = zeros(1,T_size);
+    % Iterate over all spanning tree.
     for t=1:T_size
         loss = loss_list{t};
         E = E_list{t};
         mu = mu_list{t};
-        ind_edge_val = ind_edge_val_list{t};
         Kmu = Kmu_list_local{t};
         gradient = gradient_list_local{t};
-        
+        %% Compute current objective value under current mu.
+        loss = reshape(loss,size(loss,1)*size(loss,2),1);
+        mu = reshape(mu,size(loss,1)*size(loss,2),1);
+        Kmu = reshape(Kmu,size(loss,1)*size(loss,2),1);
+        % on function
+        %Gcur = norm_const_linear*mu'*loss - 1/2*norm_const_quadratic_list(t)*mu'*Kmu;
+        % on gradient
+        Gcur = reshape(gradient,1,size(gradient,1)*size(gradient,2))*reshape(mu,1,size(mu,1)*size(mu,2))';
+        %% compute best possible objective along Y* and gradient.
         Gmax = compute_Gmax(gradient,Ypred,E);
-        mu = reshape(mu,4,m*size(E,1));
-        duality_gap = params.C*max(Gmax,0) - sum(reshape(sum(gradient.*mu),size(E,1),m),1)';
-        dgap(t) = sum(duality_gap);
+        %% the difference is estimated duality gap
+        dgap(t) = params.C*sum(Gmax)-Gcur;
+        %[params.C*sum(Gmax),Gcur]
     end
-    %% primal upper bound
+% %     % Comment out old duality gap computation
+% %     for t=1:T_size
+% %         %loss = loss_list{t};
+% %         E = E_list{t};
+% %         mu = mu_list{t};
+% %         %ind_edge_val = ind_edge_val_list{t};
+% %         %Kmu = Kmu_list_local{t};
+% %         gradient = gradient_list_local{t};
+% %         
+% %         Gmax = compute_Gmax(gradient,Ypred,E);
+% %         mu = reshape(mu,4,m*size(E,1));
+% % 
+% %         %[params.C*max(Gmax,0), sum(reshape(sum(gradient.*mu),size(E,1),m),1)']'
+% %         duality_gap = params.C*max(Gmax,0) - sum(reshape(sum(gradient.*mu),size(E,1),m),1)';
+% %         
+% %         dgap(t) = sum(duality_gap);
+% %     end
+
+    %% Compute primal upper bound, which is obj+duality gap
+    % TODO: one of the calculates can be further optimized, as there is no
+    % need to compute both obj and dgap.
     primal_ub = obj + sum(dgap);
-    
+
+    %%
     return;
 end
 function par_compute_duality_gap
@@ -593,12 +585,14 @@ end
 
 
 
-%% conditional gradient optimization, conditional on example x
+%% Perform conditional gradient optimization on single training example, upadte corresponding marginal dual variable.
+% Reviewed on 16/05/2014
 % input: 
-%   x   --> the id of current training example
-%   obj --> current objective
-%   kappa --> current kappa
+%   x:      the id of current training example
+%   obj:    current objective
+%   kappa:  current kappa
 function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, kappa)
+    %% Parameter definition
     global loss_list;
     global loss;
     global Ye_list;
@@ -627,15 +621,16 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     global GoodUpdate_list;
     
     
-    Y_kappa = zeros(T_size,kappa*l);        % label prediction
-    Y_kappa_val = zeros(T_size,kappa);      % score
+    %% Collect top-K prediction from each tree.
+    % Define variables to collect results.
+    Y_kappa = zeros(T_size,kappa*l);
+    Y_kappa_val = zeros(T_size,kappa);
     gradient_list_local = cell(1,T_size);
     Kmu_x_list_local = cell(1,T_size);
     
-    %% collect top-K prediction from each tree
-    print_message(sprintf('Collect top-k prediction from each tree T-size %d', T_size),3)
+    % Iterate over spanning trees.
     for t=1:T_size
-        % variables located for tree t and example x
+        % Variables located for tree t and example x.
         loss = loss_list{t}(:,x);
         Ye = Ye_list{t}(:,x);
         ind_edge_val = ind_edge_val_list{t};
@@ -643,41 +638,50 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         E = E_list{t};
         Rmu = Rmu_list{t};
         Smu = Smu_list{t};    
-        % compute the quantity for tree t
-        Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu); % Kmu_x = K_x*mu_x
+        % Compute some quantities for tree t.
+        % Kmu_x = K_x*mu_x
+        Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu);
         Kmu_x = Kmu_x_list_local{t};
-        gradient_list_local{t} =  norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu_x;    % current gradient    
+        % current gradient    
+        gradient_list_local{t} =  norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu_x;
         gradient = gradient_list_local{t};
         
-        % FIND TOP K VIOLATOR
+        % Find top K violator.
 %         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
         node_degree = zeros(1,l);
         for i=1:l
             node_degree(i) = sum(sum(E==i));
         end
         
-
         [Ymax,YmaxVal] = compute_topk_omp(gradient,kappa,E,node_degree);
+
+        if iter==0
+            adfs
+        end
+        if x==0
+            disp('1. k best from all trees');
+            reshape(mu,4,size(gradient,1)/4)  
+            reshape(gradient,4,size(gradient,1)/4)  
+            Y_tr(x,:)
+            Ymax
+            gradient
+        end
         
-        % SAVE RESULTS
+
+        
+        % Save results.
         Y_kappa(t,:) = Ymax;
         Y_kappa_val(t,:) = YmaxVal;
-        
-        
-    
     end
     
-
     
-    
-
-    %% get worst violator from top K
+    %% Get worst violating multilabel from K best list.
     if iter==0
+        % TODO, the condition might not be satisfied
+        % the first iteration: set default violator
         Ymax = ones(1,l)*(-1);
         kappa_decrease_flag=1;
     else
-        %[Ymax, YmaxVal0, kappa_decrease_flag] = find_worst_violator(Y_kappa,Y_kappa_val,Y_tr(x,:));
-        
         IN_E = zeros(size(E_list{1},1)*2,size(E_list,1));
         for t=1:T_size
             IN_E(:,t) = reshape(E_list{t},size(E_list{1},1)*2,1);
@@ -688,79 +692,23 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         end
         Y_kappa = (Y_kappa+1)/2;
         Yi = (Y_tr(x,:)+1)/2;
-%         
-%         Y_kappa = Y_kappa(1,:);
-%         Y_kappa_val = Y_kappa_val(1,:);
-%         IN_E = IN_E(:,1);
-%         IN_gradient = IN_gradient(:,1);
-        
-
-%reshape(IN_gradient,4,13)
-
-
-
-%reshape(mu_list{1}(:,x),4,13)
 
         [Ymax, val, kappa_decrease_flag,Yi_pos] = find_worst_violator_new(Y_kappa,Y_kappa_val,Yi,IN_E,IN_gradient);
         val_list(x) = val;
         Yipos_list(x) = Yi_pos;
         Ymax = Ymax*2-1;
-        
-        
-        
     end
      
-%    if iter ==20 && x==2
-%         adfasd
-%    end
-    
-%     if ~kappa_decrease_flag && 0
-%         for i=1:size(Y_kappa_val,1)
-%             for j = 1:size(Y_kappa_val,2)
-%                 s = strrep(sprintf('%d ',(Y_kappa(i,((j-1)*l+1):(j*l))+1)/2),' ','');
-%                 Y_kappa_ind(i,j) = bin2dec(s);
-%             end
-%         end
-%         Y_kappa_ind
-%         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
-%         [Ymax,~] = majority_voting(Y_kappa,Y_kappa_val,l,Y_tr(x,:));
-        %Ymax = Y_kappa(1,1:l);
-%         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
-%     end
 
-%         for i=1:size(Y_kappa_val,1)
-%             for j = 1:size(Y_kappa_val,2)
-%                 s = strrep(sprintf('%d ',(Y_kappa(i,((j-1)*l+1):(j*l))+1)/2),' ','');
-%                 Y_kappa_ind(i,j) = bin2dec(s);
-%             end
-%         end
-%         disp('here')
-%         Y_kappa_ind
-%         Y_kappa_val
-%         bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
-%         
-    %% if the worst violator is not for all tree, the update towards average
-%     if kappa_decrease_flag == 0
-%         Ymax = (sum(Y_kappa(:,1:size(Ymax,2)))>=0)*2-1;
-%         %bin2dec(strrep(sprintf('%d ',(Ymax+1)/2),' ',''))
-%         %delta_obj_list = zeros(1,T_size);
-%         %return
-%     end
-    
-%     Y_kappa
-%     Y_kappa_val
-%     Ymax
-%     kappa_decrease_flag
-
-
-    %% if the worst violator is the correct label, exit without update mu
+    %% If the worst violator is the correct label, exit without update mu.
     if sum(Ymax~=Y_tr(x,:))==0 %|| ( ( (kappa_decrease_flag==0) && kappa < params.maxkappa) && iter~=1 )
         delta_obj_list = zeros(1,T_size);
         return;
     end
     
     
-    %% otherwise line serach
+    %% Otherwise we need line serach to find optimal step size to the saddle point.
+    % reviewed on 16/05/2014
     mu_d_list = mu_list;
     nomi=zeros(1,T_size);
     denomi=zeros(1,T_size);
@@ -769,7 +717,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
     G0 = zeros(1,T_size);
     Kmu_d_list = cell(1,T_size);
     for t=1:T_size
-        % variables located for tree t and example x
+        %% Obtain variables located for tree t and example x.
         loss = loss_list{t}(:,x);
         Ye = Ye_list{t}(:,x);
         ind_edge_val = ind_edge_val_list{t};
@@ -777,20 +725,25 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         E = E_list{t};
         Rmu = Rmu_list{t};
         Smu = Smu_list{t};
-
-        %% compute
+        
+        %% compute Gmax and G0
         Kmu_x = Kmu_x_list_local{t};
         gradient = gradient_list_local{t};
-        Gmax(t) = compute_Gmax(gradient,Ymax,E);            % objective under best labeling
-        G0(t) = -mu'*gradient;                               % current objective
+        % Compute Gmax, which is the best objective value along gradient.
+        Gmax(t) = compute_Gmax(gradient,Ymax,E);
+        Gmax(t) = Gmax(t)*params.C;
+        % Compute G0, which is current objective value. 
+        G0(t) = -mu'*gradient;
+        %G0(t) = norm_const_linear*loss'*mu - 1/2*norm_const_quadratic_list(t)*Kmu_x'*mu;
         
-        %% best margin violator into update direction mu_0
+        %% Compte mu_0, which is the best margin violator into update direction.
         Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
         mu_0 = zeros(size(mu));
         for u = 1:4
             mu_0(4*(1:size(E,1))-4 + u) = params.C*(Umax_e == u);
         end
-        % compute Kmu_0
+        
+        %% compute Kmu_0
         if sum(mu_0) > 0
             smu_1_te = sum(reshape(mu_0.*Ye,4,size(E,1)),1);
             smu_1_te = reshape(smu_1_te(ones(4,1),:),length(mu),1);
@@ -807,33 +760,30 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         Kmu_d_list{t} = Kmu_d;
         mu_d_list{t} = mu_d;
         nomi(t) = mu_d'*gradient;
-        denomi(t) = norm_const_quadratic_list(t)*Kmu_d' * mu_d;
+        denomi(t) = norm_const_quadratic_list(t) * Kmu_d' * mu_d;
         
+            
+        if x==0
+            [nomi(t),denomi(t)]
+            [nomi(t)/denomi(t)]
+            if iter ==5
+                asdfad
+            end
+        end
+
     end
     
-    
-
-    
-
-    % decide whether to update or not
-    
-    
+    %% Decide whether to update or not.
     if sum(Gmax)>=sum(G0)
         tau = min(sum(nomi)/sum(denomi),1);
     else
         tau=0;
     end
+    % Step size should not be negative.
     tau = max(tau,0);
-    
-    
-    %disp([tau,sum(nomi)/sum(denomi),nomi./denomi])
-   
-    
+
 	GmaxG0_list(x) = sum(Gmax>=G0);
     GoodUpdate_list(x) = (tau>0);
-    
-    
-        
     
     
     %% update for each tree
@@ -863,9 +813,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         mu_list{t}(:,x) = mu;
     end
     
-    
-
-    
+    %%
     return;
 end
 % function [delta_obj_list,kappa_decrease_flag] = par_conditional_gradient_descent(x, kappa)
@@ -1039,6 +987,7 @@ function [Gmax] = compute_Gmax(gradient,Ymax,E)
     % sum up the corresponding edge-gradients
     Gmax = reshape(sum(gradient.*Umax),size(E,1),m);
     Gmax = reshape(sum(Gmax,1),m,1);
+    
     
     return;
 end

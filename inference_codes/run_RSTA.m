@@ -74,7 +74,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     [~,comres]=system('hostname');
     
     % Read in X and Y matrix
-    if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
+    if strcmp(comres(1:4),'melkinkari') || strcmp(comres(1:4),'ukko') || strcmp(comres(1:4),'node')
         X=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_features',filename));
         Y=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_targets',filename));
     else
@@ -83,12 +83,12 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     end
     
     %% Process input data X and Y matrix
-    % select example with features that make sense
+    % select examples which have non-zero features 
     Xsum=sum(X,2);
     X=X(Xsum~=0,:);
     Y=Y(Xsum~=0,:);
-    
-    % label selection with two classes
+    % Select labels which is not constant over examples.
+    % Note that after label selection the performance might drop because the easy-to-predict labels are removed.
     Yuniq=zeros(1,size(Y,2));
     for i=1:size(Y,2)
         if size(unique(Y(:,i)),1)>1
@@ -97,17 +97,19 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     end
     Y=Y(:,Yuniq(Yuniq~=0));
     
-    % feature normalization (tf-idf for text data, scale and centralization for other numerical features)
+    %Y=Y(:,1:6);
+    
+    % Feature normalization (tf-idf for text data, scale and centralization for other numerical features).
     if or(strcmp(filename,'medical'),strcmp(filename,'enron')) 
         X=tfidf(X);
     elseif ~(strcmp(filename(1:2),'to'))
         X=(X-repmat(min(X),size(X,1),1))./repmat(max(X)-min(X),size(X,1),1);
     end
 
-    % change Y from -1 to 0: labeling (0/1)
+    % Change Y from -1 to 0: labeling (0/1).
     Y(Y==-1)=0;
 
-    % get dot product kernels from normalized features or just read precomputed kernels
+    % Get dot product kernels from normalized features or just read precomputed kernels.
     if or(strcmp(filename,'fpuni'),strcmp(filename,'cancer'))
         if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
             K=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_kernel',filename));
@@ -119,11 +121,11 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         K = K ./ sqrt(diag(K)*diag(K)');    %normalization diagonal is 1
     end
 
-    %% Stratified n fold cross validation index
+    %% Stratified n fold cross validation index.
     nfold = 5;
     Ind = getCVIndex(Y,nfold);
     
-    %% Select part of the data for code sanity check
+    %% Select part of the data for code sanity check if 'isTest==1'.
     ntrain = 100;
     if isTest==1
         X=X(1:ntrain,:);
@@ -132,7 +134,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         Ind=Ind(1:ntrain);
     end
 
-    %% Parameter selection
+    %% Perform parameter selection.
     % TODO: to be better implemented
     % ues results from parameter selection, otherwise use fixed parameters
     para_n=11;
@@ -149,15 +151,15 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     mmcrf_c = parameters(para_n,2);
     
     % currently use following parameters
-    mmcrf_c = 1;
+    mmcrf_c = .10;
     mmcrf_g = -10000;%0.01;
-    mmcrf_i = 120;
+    mmcrf_i = 520;
     mmcrf_maxkappa = maxkappa;
     
     % display parameters
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
     
-    %% generate random graph
+    %% Generate random graph.
     rand('twister', 0);    
     
     Nrep=t;
@@ -186,10 +188,11 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         
     end
     
-    % pick up one random graph
+    
+    % Pick up one random graph.
     E=Elist{t};
     
-    %% variable to keep results
+    %% Variable to keep results.
     Ypred=zeros(size(Y));
     YpredVal=zeros(size(Y));
     running_times=zeros(nfold,1);
