@@ -153,7 +153,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     % currently use following parameters
     mmcrf_c = .010;
     mmcrf_g = -10000;%0.01;
-    mmcrf_i = 200;
+    mmcrf_i = 120;
     mmcrf_maxkappa = maxkappa;
     
     % display parameters
