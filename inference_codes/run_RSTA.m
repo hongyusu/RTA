@@ -74,7 +74,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     [~,comres]=system('hostname');
     
     % Read in X and Y matrix
-    if strcmp(comres(1:10),'melkinkari') || strcmp(comres(1:4),'ukko') || strcmp(comres(1:4),'node')
+    if strcmp(comres(1:4),'melk') || strcmp(comres(1:4),'ukko') || strcmp(comres(1:4),'node')
         X=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_features',filename));
         Y=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_targets',filename));
     else
