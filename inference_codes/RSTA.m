@@ -3,9 +3,13 @@
 
 %% 
 %
-% L2 norm combination of predictors which are defined on a set of random
-% spanning trees.
-%
+% Random spanning tree approximations assumes a model build with complete
+% graph as output graph structure. As learning/inference on complete graph
+% is difficult, the algorithm construct a set of predictors with random
+% spanning tree as output graph. Under margin assumption, if the there is a
+% classifier achieve a margin on a complete graph, there will be a
+% combination of random tree predictors achieving a similar margin.
+% 
 %
 %
 function [rtn, ts_err] = RSTA(paramsIn, dataIn)

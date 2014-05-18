@@ -75,8 +75,8 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     
     % Read in X and Y matrix
     if strcmp(comres(1:10),'melkinkari') || strcmp(comres(1:4),'ukko') || strcmp(comres(1:4),'node')
-        X=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_features',filename));
-        Y=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_targets',filename));
+        X=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_features',filename));
+        Y=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_targets',filename));
     else
         X=dlmread(sprintf('../shared_scripts/test_data/%s_features',filename));
         Y=dlmread(sprintf('../shared_scripts/test_data/%s_targets',filename));
@@ -112,7 +112,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     % Get dot product kernels from normalized features or just read precomputed kernels.
     if or(strcmp(filename,'fpuni'),strcmp(filename,'cancer'))
         if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
-            K=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_kernel',filename));
+            K=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_kernel',filename));
         else
             K=dlmread(sprintf('../shared_scripts/test_data/%s_kernel',filename));
         end
@@ -151,9 +151,9 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     mmcrf_c = parameters(para_n,2);
     
     % currently use following parameters
-    mmcrf_c = .10;
+    mmcrf_c = .010;
     mmcrf_g = -10000;%0.01;
-    mmcrf_i = 520;
+    mmcrf_i = 200;
     mmcrf_maxkappa = maxkappa;
     
     % display parameters
