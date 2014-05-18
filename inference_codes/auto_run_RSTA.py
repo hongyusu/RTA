@@ -2,7 +2,7 @@
 import os
 import sys
 import commands
-sys.path.append('/home/group/urenzyme/workspace/netscripts/')
+sys.path.append('/cs/taatto/group/urenzyme/workspace/netscripts/')
 from get_free_nodes import get_free_nodes
 import multiprocessing
 import time
@@ -17,7 +17,7 @@ def singleRSTA(filename,graph_type,t,node,kth_fold,l_norm,kappa):
     logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
   except:
     logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
-    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /home/group/urenzyme/workspace/colt2014/experiments/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAr' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
+    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAr' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
     logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
     time.sleep(5)
   pass
@@ -27,10 +27,13 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run=1
+  is_main_run=1.5
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
   filenames=['toy10','emotions','yeast','medical','scene','enron','toy50','ArD10','ArD15','ArD20','ArD30']#,'fp','cancer','cal500']
+  filenames=['ArD10','ArD15','ArD20','ArD30']
+  filenames=['toy10','emotions','yeast','medical','scene','enron']#'toy50','ArD10','ArD15','ArD20','ArD30']#,'fp','cancer','cal500']
+  filenames=['toy50']
   n=0
   for kth_fold in ['1']:#,'2','3','4','5']:
     for filename in filenames:
