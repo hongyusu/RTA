@@ -189,9 +189,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         if mode(iter,3) <= 30
             Yipos_list = ones(1,m);
         end
-        %for xi = randsample(1:m,m,true,Yipos_list/sum(Yipos_list))
+        for xi = randsample(1:m,m,true,Yipos_list/sum(Yipos_list))
         %for xi = randsample(1:m,m)
-        for xi = 1:m
+        %for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
