@@ -58,7 +58,7 @@ void mexFunction ( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     #define OUT_Ymax            plhs[0] // OUTPUT BEST MULTILABEL
     #define OUT_YmaxVal         plhs[1] // OUTPUT MARGIN
     #define OUT_break_flag      plhs[2] // HIGHEST POSITION OF MULTILABEL IN THE LIST
-    #define OUT_Yi_pos           plhs[3] // AVERAGE POSITION OF Yi
+    #define OUT_Yi_pos          plhs[3] // MEDIAN AVERAGE POSITION OF Yi
     
     double * Y_kappa;
     double * Y_kappa_val;
@@ -428,7 +428,8 @@ void mexFunction ( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         }
     }
     qsort(Y_positions, Y_kappa_val_nrow, sizeof(double), sortcompare);
-    *(mxGetPr(OUT_break_flag)) = Y_positions[Y_kappa_val_nrow/2]; 
+    //*(mxGetPr(OUT_break_flag)) = Y_positions[Y_kappa_val_nrow/2]; // average position
+    *(mxGetPr(OUT_break_flag)) = Y_positions[0]; // minimum position
     free(Y_positions);
     free(Y_kappa_ind);
     

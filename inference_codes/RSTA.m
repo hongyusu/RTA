@@ -333,7 +333,7 @@ function Kmu = compute_Kmu(Kx,mu,E,ind_edge_val)
 end
 
 
-%% compute part of gradient for current example x
+%% Compute gradient on example x, gradient is l-uk, this function will compute uk
 % Input:
 %   x,Kx,t
 % Output
@@ -463,12 +463,13 @@ function compute_duality_gap
         loss = reshape(loss,size(loss,1)*size(loss,2),1);
         mu = reshape(mu,size(loss,1)*size(loss,2),1);
         Kmu = reshape(Kmu,size(loss,1)*size(loss,2),1);
-        % on function
+        % compute current maxima on function
         %Gcur = norm_const_linear*mu'*loss - 1/2*norm_const_quadratic_list(t)*mu'*Kmu;
-        % on gradient
+        % compute current maxima on gradient
         Gcur = reshape(gradient,1,size(gradient,1)*size(gradient,2))*reshape(mu,1,size(mu,1)*size(mu,2))';
         %% compute best possible objective along Y* and gradient.
         Gmax = compute_Gmax(gradient,Ypred,E);
+        %[params.C*sum(Gmax),Gcur]
         %% the difference is estimated duality gap
         dgap(t) = params.C*sum(Gmax)-Gcur;
         %[params.C*sum(Gmax),Gcur]
@@ -494,7 +495,12 @@ function compute_duality_gap
     %% Compute primal upper bound, which is obj+duality gap
     % TODO: one of the calculates can be further optimized, as there is no
     % need to compute both obj and dgap.
-    primal_ub = obj + sum(dgap);
+    %obj + sum(dgap)
+    if obj + sum(dgap) <  primal_ub
+        % always use smaller value for primal upper bound
+        primal_ub=obj + sum(dgap);
+    end
+    %primal_ub = obj + sum(dgap);
 
     %%
     return;
@@ -768,9 +774,282 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, 
         
             
         if x==0
+            %reshape(mu_d,4,size(E,1))
             [nomi(t),denomi(t)]
             [nomi(t)/denomi(t)]
-            if iter ==5
+            if iter == 10
+                asdfad
+            end
+        end
+
+    end
+    
+    %% Decide whether to update or not.
+    if sum(Gmax)>=sum(G0)
+        tau = min(sum(nomi)/sum(denomi),1);
+    else
+        tau=0;
+    end
+    % Step size should not be negative.
+    tau = max(tau,0);
+
+	GmaxG0_list(x) = sum(Gmax>=G0);
+    GoodUpdate_list(x) = (tau>0);
+    
+    
+    %% update for each tree
+    delta_obj_list = zeros(1,T_size);
+    for t=1:T_size
+        % variables located for tree t and example x
+        loss = loss_list{t}(:,x);
+        Ye = Ye_list{t}(:,x);
+        ind_edge_val = ind_edge_val_list{t};
+        mu = mu_list{t}(:,x);
+        E = E_list{t};
+        gradient =  gradient_list_local{t};
+        mu_d = mu_d_list{t};
+        Kmu_d = Kmu_d_list{t};
+        %
+        delta_obj_list(t) = gradient'*mu_d*tau - norm_const_quadratic_list(t)*tau^2/2*mu_d'*Kmu_d;
+        mu = mu + tau*mu_d;
+        Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
+        % update Smu Rmu
+        mu = reshape(mu,4,size(E,1));
+        for u = 1:4
+            Smu_list{t}{u}(:,x) = (sum(mu)').*ind_edge_val{u}(:,x);
+            Rmu_list{t}{u}(:,x) = mu(u,:)';
+        end
+        
+        mu = reshape(mu,4*size(E,1),1);
+        mu_list{t}(:,x) = mu;
+    end
+    
+    %%
+    return;
+end
+%% Perform conditional gradient optimization on single training example, upadte corresponding marginal dual variable.
+% Reviewed on 16/05/2014
+% input: 
+%   x:      the id of current training example
+%   obj:    current objective
+%   kappa:  current kappa
+function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_convex(x, kappa)
+    %% Parameter definition
+    global loss_list;
+    global loss;
+    global Ye_list;
+    global Ye;
+    global E_list;
+    global E;
+    global mu_list;
+    global mu;
+    global ind_edge_val_list;
+    global ind_edge_val;
+    global Rmu_list;
+    global Smu_list;
+    global Kxx_mu_x_list;
+    global norm_const_linear;
+    global norm_const_quadratic_list;
+    global l;
+    global Kx_tr;
+    global Y_tr;
+    global T_size;
+    global params;
+    global iter;
+    
+    global val_list;
+    global Yipos_list;
+    global GmaxG0_list;
+    global GoodUpdate_list;
+    
+    
+    %% Collect top-K prediction from each tree.
+    % Define variables to collect results.
+    Y_kappa = zeros(T_size,kappa*l);
+    Y_kappa_val = zeros(T_size,kappa);
+    gradient_list_local = cell(1,T_size);
+    Kmu_x_list_local = cell(1,T_size);
+    
+    % Iterate over spanning trees.
+    for t=1:T_size
+        % Variables located for tree t and example x.
+        loss = loss_list{t}(:,x);
+        Ye = Ye_list{t}(:,x);
+        ind_edge_val = ind_edge_val_list{t};
+        mu = mu_list{t}(:,x);
+        E = E_list{t};
+        Rmu = Rmu_list{t};
+        Smu = Smu_list{t};    
+        % Compute some quantities for tree t.
+        % Kmu_x = K_x*mu_x
+        Kmu_x_list_local{t} = compute_Kmu_x(x,Kx_tr(:,x),E,ind_edge_val,Rmu,Smu);
+        Kmu_x = Kmu_x_list_local{t};
+        % current gradient    
+        gradient_list_local{t} =  norm_const_linear*loss - norm_const_quadratic_list(t)*Kmu_x;
+        gradient = gradient_list_local{t};
+        
+        % Find top K violator.
+%         [Ymax,YmaxVal] = compute_topk(gradient,kappa,E);
+        node_degree = zeros(1,l);
+        for i=1:l
+            node_degree(i) = sum(sum(E==i));
+        end
+        
+        [Ymax,YmaxVal] = compute_topk_omp(gradient,kappa,E,node_degree);
+
+        if iter==0
+            adfs
+        end
+        if x==0
+            disp('1. k best from all trees');
+            reshape(mu,4,size(gradient,1)/4)  
+            reshape(gradient,4,size(gradient,1)/4)  
+            Y_tr(x,:)
+            Ymax
+            gradient
+        end
+        
+
+        
+        % Save results.
+        Y_kappa(t,:) = Ymax;
+        Y_kappa_val(t,:) = YmaxVal;
+    end
+    
+    %% Update direction. Worst violating multilabels is defined as the first column, the number of trees define the number of multilabel used in convex direction finding.
+    mu_0_T = cell(T_size);
+    for t=1:T_size
+        E=E_list{t};
+        mu_0s = zeros(T_size,4*size(E,1));
+        for i=1:T_size
+            Ymax = Y_kappa(i,1:l);
+            Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
+            mu_0 = zeros(size(mu));
+            for u = 1:4
+                mu_0(4*(1:size(E,1))-4 + u) = params.C*(Umax_e == u);
+            end
+            mu_0s(i,:)=reshape(mu_0,1,4*size(E,1));
+        end
+        mu_0_T{t}=mu_0s;
+    end
+    
+    %% updated line search
+    % Comptue linear term;
+    linear_term = zeros(T_size,1);
+    for t=1:T_size
+        linear_term = linear_term + mu_0_T{t}*loss;
+    end
+    %linear_term'
+    linear_term = norm_const_linear * linear_term;
+    % Compute quadratic term
+    quadratic_term = zeros(T_size,T_size);
+    for t=1:T_size
+        ind_edge_val = ind_edge_val_list{t};
+        Kmu_x_T = zeros(T_size,4*size(E,1));
+        for i=1:T_size
+            mu_0 = reshape(mu_0_T{t}{i,:},4,size(E,1));
+            for u = 1:4
+                Smu{u}(:,x) = (sum(mu_0)').*ind_edge_val{u}(:,x);
+                Rmu{u}(:,x) = mu_0(u,:)';
+            end
+        end
+    end
+    
+    
+    
+    %% Get worst violating multilabel from K best list.
+    if iter==0
+        % TODO, the condition might not be satisfied
+        % the first iteration: set default violator
+        Ymax = ones(1,l)*(-1);
+        kappa_decrease_flag=1;
+    else
+        IN_E = zeros(size(E_list{1},1)*2,size(E_list,1));
+        for t=1:T_size
+            IN_E(:,t) = reshape(E_list{t},size(E_list{1},1)*2,1);
+        end
+        IN_gradient = zeros(size(gradient_list_local{1},1),size(E_list,1));
+        for t=1:T_size
+            IN_gradient(:,t) = gradient_list_local{t};
+        end
+        Y_kappa = (Y_kappa+1)/2;
+        Yi = (Y_tr(x,:)+1)/2;
+
+        [Ymax, val, kappa_decrease_flag,Yi_pos] = find_worst_violator_new(Y_kappa,Y_kappa_val,Yi,IN_E,IN_gradient);
+        val_list(x) = val;
+        Yipos_list(x) = Yi_pos;
+        Ymax = Ymax*2-1;
+    end
+     
+
+    %% If the worst violator is the correct label, exit without update mu.
+    if sum(Ymax~=Y_tr(x,:))==0 %|| ( ( (kappa_decrease_flag==0) && kappa < params.maxkappa) && iter~=1 )
+        delta_obj_list = zeros(1,T_size);
+        return;
+    end
+    
+    
+    %% Otherwise we need line serach to find optimal step size to the saddle point.
+    % reviewed on 16/05/2014
+    mu_d_list = mu_list;
+    nomi=zeros(1,T_size);
+    denomi=zeros(1,T_size);
+    kxx_mu_0 = cell(1,T_size);
+    Gmax = zeros(1,T_size);
+    G0 = zeros(1,T_size);
+    Kmu_d_list = cell(1,T_size);
+    for t=1:T_size
+        %% Obtain variables located for tree t and example x.
+        loss = loss_list{t}(:,x);
+        Ye = Ye_list{t}(:,x);
+        ind_edge_val = ind_edge_val_list{t};
+        mu = mu_list{t}(:,x);
+        E = E_list{t};
+        Rmu = Rmu_list{t};
+        Smu = Smu_list{t};
+        
+        %% compute Gmax and G0
+        Kmu_x = Kmu_x_list_local{t};
+        gradient = gradient_list_local{t};
+        % Compute Gmax, which is the best objective value along gradient.
+        Gmax(t) = compute_Gmax(gradient,Ymax,E);
+        Gmax(t) = Gmax(t)*params.C;
+        % Compute G0, which is current objective value. 
+        G0(t) = -mu'*gradient;
+        %G0(t) = norm_const_linear*loss'*mu - 1/2*norm_const_quadratic_list(t)*Kmu_x'*mu;
+        
+        %% Compte mu_0, which is the best margin violator into update direction.
+        Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
+        mu_0 = zeros(size(mu));
+        for u = 1:4
+            mu_0(4*(1:size(E,1))-4 + u) = params.C*(Umax_e == u);
+        end
+        
+        %% compute Kmu_0
+        if sum(mu_0) > 0
+            smu_1_te = sum(reshape(mu_0.*Ye,4,size(E,1)),1);
+            smu_1_te = reshape(smu_1_te(ones(4,1),:),length(mu),1);
+            kxx_mu_0{t} = ~Ye*params.C+mu_0-smu_1_te;
+        else
+            kxx_mu_0{t} = zeros(size(mu));
+        end
+        
+        Kmu_0 = Kmu_x + kxx_mu_0{t} - Kxx_mu_x_list{t}(:,x);
+
+        mu_d = mu_0 - mu;
+        Kmu_d = Kmu_0-Kmu_x;
+              
+        Kmu_d_list{t} = Kmu_d;
+        mu_d_list{t} = mu_d;
+        nomi(t) = mu_d'*gradient;
+        denomi(t) = norm_const_quadratic_list(t) * Kmu_d' * mu_d;
+        
+            
+        if x==0
+            %reshape(mu_d,4,size(E,1))
+            [nomi(t),denomi(t)]
+            [nomi(t)/denomi(t)]
+            if iter == 10
                 asdfad
             end
         end
@@ -1382,7 +1661,9 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
-    loss = loss*0+1;
+    loss = loss*0+1; % uniform loss
+    %loss = loss*0 + size(E,1)/100;
+    %loss = loss; % scaled loss
     %loss = loss + sqrt(size(E_list{1},1));
     
     return;
