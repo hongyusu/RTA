@@ -58,7 +58,7 @@ void mexFunction ( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     #define OUT_Ymax            plhs[0] // OUTPUT BEST MULTILABEL
     #define OUT_YmaxVal         plhs[1] // OUTPUT MARGIN
     #define OUT_break_flag      plhs[2] // HIGHEST POSITION OF MULTILABEL IN THE LIST
-    #define OUT_Yi_pos          plhs[3] // MEDIAN AVERAGE POSITION OF Yi
+    #define OUT_Yi_pos          plhs[3] // MEDIAN AVERAGE POSITION OF Yi given K
     
     double * Y_kappa;
     double * Y_kappa_val;
