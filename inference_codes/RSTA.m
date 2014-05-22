@@ -1662,7 +1662,7 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
     end
     Ye = reshape(Ye,4*size(E,1),m);
     loss = loss*0+1; % uniform loss
-    %loss = loss*0 + size(E,1)/100;
+    %loss = loss*0 + size(E,1);
     %loss = loss; % scaled loss
     %loss = loss + sqrt(size(E_list{1},1));
     
