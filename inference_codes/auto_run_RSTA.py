@@ -43,12 +43,16 @@ def run():
             if t==0:
               t=1
             para_t="%d" % (t)
-            node=cluster[n%len(cluster)]
-            n+=1
-            p=multiprocessing.Process(target=singleRSTA, args=(filename,graph_type,para_t,node,kth_fold,l_norm,kappa,))
-            jobs.append(p)
-            p.start()
-            time.sleep(10*is_main_run) # fold
+            try:
+              with open("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAr.log" % (filename,graph_type,para_t,kth_fold,l_norm,kappa)): pass
+              continue
+            except:
+              node=cluster[n%len(cluster)]
+              n+=1
+              p=multiprocessing.Process(target=singleRSTA, args=(filename,graph_type,para_t,node,kth_fold,l_norm,kappa,))
+              jobs.append(p)
+              p.start()
+              time.sleep(10*is_main_run) # fold
             pass
           time.sleep(10*is_main_run) # l norm
           pass
