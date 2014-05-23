@@ -27,7 +27,7 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run=0.1
+  is_main_run=0
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
   filenames=['toy10','emotions','yeast','medical','scene','enron','toy50','ArD10','ArD15','ArD20','ArD30']#,'fp','cancer','cal500']
@@ -52,7 +52,7 @@ def run():
               p=multiprocessing.Process(target=singleRSTA, args=(filename,graph_type,para_t,node,kth_fold,l_norm,kappa,))
               jobs.append(p)
               p.start()
-              time.sleep(10*is_main_run) # fold
+              time.sleep(30) # fold
             pass
           time.sleep(10*is_main_run) # l norm
           pass
