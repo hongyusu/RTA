@@ -222,7 +222,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %Yipos_list
         %obj_list
         
-        if mod(iter, 1)==0
+        if mod(iter, 40)==0
             progress_made = (obj >= prev_obj);  
             prev_obj = obj;
             if PAR
@@ -297,7 +297,6 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     rtn = 0;
     ts_err = 0;
 end
-
 
 
 %% Complete part of gradient for everything
@@ -909,18 +908,16 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
             gradient
         end
         
-
-        
         % Save results.
         Y_kappa(t,:) = Ymax;
         Y_kappa_val(t,:) = YmaxVal;
     end
     
     %% Update direction. Worst violating multilabels is defined as the first column, the number of trees define the number of multilabel used in convex direction finding.
-    mu_0_T = cell(T_size);
+    mu_0_T = cell(T_size,1);
     for t=1:T_size
         E=E_list{t};
-        mu_0s = zeros(T_size,4*size(E,1));
+        mu_0s = zeros(4*size(E,1),T_size);
         for i=1:T_size
             Ymax = Y_kappa(i,1:l);
             Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
@@ -928,65 +925,79 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
             for u = 1:4
                 mu_0(4*(1:size(E,1))-4 + u) = params.C*(Umax_e == u);
             end
-            mu_0s(i,:)=reshape(mu_0,1,4*size(E,1));
+            mu_0s(:,i)=reshape(mu_0,4*size(E,1),1);
         end
         mu_0_T{t}=mu_0s;
     end
     
-    %% updated line search
-    % Comptue linear term;
+    
+    %% Generalized line search to get lambda.
+    % direction mu_0_T{t}:4|E|*n_direction
+    % loss: 4|E|*1
     linear_term = zeros(T_size,1);
-    for t=1:T_size
-        linear_term = linear_term + mu_0_T{t}*loss;
-    end
-    %linear_term'
-    linear_term = norm_const_linear * linear_term;
-    % Compute quadratic term
     quadratic_term = zeros(T_size,T_size);
+    n_direction=size(mu_0_T{1},2);
+    kxx_mu_0 = cell(1,T_size);
+    % Iterate on each tree.
     for t=1:T_size
-        ind_edge_val = ind_edge_val_list{t};
-        Kmu_x_T = zeros(T_size,4*size(E,1));
-        for i=1:T_size
-            mu_0 = reshape(mu_0_T{t}{i,:},4,size(E,1));
+        % Comptue linear term;
+        linear_term = linear_term + norm_const_linear*mu_0_T{t}'*loss;
+        % Compute quadratic term
+        Ye = Ye_list{t}(:,x);
+        E = E_list{t};
+        % Compute Kmu_x
+        Kmu_0 = zeros(4*size(E,1),n_direction);
+        smu_1_te = sum(reshape(mu_0.*Ye,4,size(E,1)),1);
+        smu_1_te = reshape(smu_1_te(ones(4,1),:),length(mu),1);
+        kxx_mu_0{t} = ~Ye*params.C+mu_0-smu_1_te;
+        Ye
+        for i=1:n_direction
+            Kmu_0(:,i) = Kmu_x + kxx_mu_0{t} - Kxx_mu_x_list{t}(:,x);
+        end
+        quadratic_term = quadratic_term + 0.5*norm_const_quadratic_list(t)*Kmu_0'*mu_0_T{t};
+    end
+    % Perform quadratic programming to solve for lambda.
+    lambda = quadprog(quadratic_term*2,linear_term,...
+        [],[],...
+        ones(1,n_direction),1,... % equality constraint: sum of lambda is 1
+        zeros(1,n_direction),ones(1,n_direction)... % inequality constraint: 0<=lambda<<1
+        ); 
+    
+    
+    %% Compute Gmax and G0.
+    for t=1:T_size
+        mu = mu_list{t}(:,x);
+        mu_t = reshape(lambda'*mu_0_T{t}',4*size(E,1),1);
+        gradient = gradient_list_local{t};
+        Gmax(t) = mu_t'*gradient;
+        G0(t) = -mu'*gradient;
+    end
+    
+    mu_t'
+    Gmax
+    G0
+    
+    
+    %% Decide whether to update.
+    if sum(Gmax) >= sum(G0)
+        for t=1:T_size
+            % update mu
+            mu = reshape(lambda'*mu_0_T{t}',4*size(E,1),1);
+            % update Kxx_mu_x_list
+            Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
+            % update Smu Rmu
+            mu = reshape(mu,4,size(E,1));
             for u = 1:4
-                Smu{u}(:,x) = (sum(mu_0)').*ind_edge_val{u}(:,x);
-                Rmu{u}(:,x) = mu_0(u,:)';
+                Smu_list{t}{u}(:,x) = (sum(mu)').*ind_edge_val{u}(:,x);
+                Rmu_list{t}{u}(:,x) = mu(u,:)';
             end
+            % save mu
+            mu = reshape(mu,4*size(E,1),1);
+            mu_list{t}(:,x) = mu;
         end
     end
     
     
-    
-    %% Get worst violating multilabel from K best list.
-    if iter==0
-        % TODO, the condition might not be satisfied
-        % the first iteration: set default violator
-        Ymax = ones(1,l)*(-1);
-        kappa_decrease_flag=1;
-    else
-        IN_E = zeros(size(E_list{1},1)*2,size(E_list,1));
-        for t=1:T_size
-            IN_E(:,t) = reshape(E_list{t},size(E_list{1},1)*2,1);
-        end
-        IN_gradient = zeros(size(gradient_list_local{1},1),size(E_list,1));
-        for t=1:T_size
-            IN_gradient(:,t) = gradient_list_local{t};
-        end
-        Y_kappa = (Y_kappa+1)/2;
-        Yi = (Y_tr(x,:)+1)/2;
-
-        [Ymax, val, kappa_decrease_flag,Yi_pos] = find_worst_violator_new(Y_kappa,Y_kappa_val,Yi,IN_E,IN_gradient);
-        val_list(x) = val;
-        Yipos_list(x) = Yi_pos;
-        Ymax = Ymax*2-1;
-    end
-     
-
-    %% If the worst violator is the correct label, exit without update mu.
-    if sum(Ymax~=Y_tr(x,:))==0 %|| ( ( (kappa_decrease_flag==0) && kappa < params.maxkappa) && iter~=1 )
-        delta_obj_list = zeros(1,T_size);
-        return;
-    end
     
     
     %% Otherwise we need line serach to find optimal step size to the saddle point.
@@ -1055,6 +1066,9 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
         end
 
     end
+    mu_0'
+    Gmax
+    G0
     
     %% Decide whether to update or not.
     if sum(Gmax)>=sum(G0)
@@ -1666,8 +1680,8 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
-    if params.losstype == 'r'
-        loss = loss*0+1; % uniform loss
+    if params.losstype == 'r'   % uniform loss
+        loss = loss*0+1; 
     end
     
     %loss = loss*0 + size(E,1);
