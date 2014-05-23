@@ -222,7 +222,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %Yipos_list
         %obj_list
         
-        if mod(iter, 20)==0
+        if mod(iter, 1)==0
             progress_made = (obj >= prev_obj);  
             prev_obj = obj;
             if PAR
@@ -1629,9 +1629,14 @@ function w_phi_e = compute_w_phi_e(Kx,E,Ye,mu)
     return;
 end
 
-%% compute loss vector
+%% Compute loss vector. there are two type of losses:
+%   1. 1 loss, incorrect multilabel will always have loss=1, will encourage
+%   sparsity of support vector.
+%   2. scaled loss, incorrect multilabel will have loss propotion to its
+%   error, will have more support vector.
 function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
     % scaling: 0=do nothing, 1=rescale node loss by degree
+    global params;
     global E_list;
     global m;
     ind_edge_val = cell(4,1);
@@ -1661,7 +1666,10 @@ function [loss,Ye,ind_edge_val] = compute_loss_vector(Y,t,scaling)
         ind_edge_val{u} = sparse(reshape(Ye(u,:)~=0,size(E,1),m));
     end
     Ye = reshape(Ye,4*size(E,1),m);
-    loss = loss*0+1; % uniform loss
+    if params.losstype == 'r'
+        loss = loss*0+1; % uniform loss
+    end
+    
     %loss = loss*0 + size(E,1);
     %loss = loss; % scaled loss
     %loss = loss + sqrt(size(E_list{1},1));

@@ -55,8 +55,11 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     % Set seed of random number
     rand('twister', 0);
     
+    losstype = 'r'; % 1 loss
+    %losstype = 's'; % scaled loss
+    
     % Set suffix of the result files
-    suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_RSTAr', filename,graph_type,t,kth_fold,l_norm,maxkappa);
+    suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_RSTA%s', filename,graph_type,t,kth_fold,l_norm,maxkappa,losstype);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     
@@ -151,7 +154,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     mmcrf_c = parameters(para_n,2);
     
     % currently use following parameters
-    mmcrf_c = 100.000;
+    mmcrf_c = 1.000;
     mmcrf_g = -10000;%0.01;
     mmcrf_i = 120;
     mmcrf_maxkappa = maxkappa;
@@ -200,6 +203,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
 
     %% nfold cross validation of base learner
     for k=kth_fold
+        paramsIn.losstype       = losstype; % losstype
         paramsIn.mlloss         = 0;        % assign loss to microlabels(0) edges(1)
         paramsIn.profiling      = 1;        % profile (test during learning)
         paramsIn.epsilon        = mmcrf_g;        % stopping criterion: minimum relative duality gap
