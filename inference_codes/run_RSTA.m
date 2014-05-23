@@ -55,8 +55,8 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     % Set seed of random number
     rand('twister', 0);
     
-    losstype = 'r'; % 1 loss
-    %losstype = 's'; % scaled loss
+    %losstype = 'r'; % 1 loss
+    losstype = 's'; % scaled loss
     
     % Set suffix of the result files
     suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_RSTA%s', filename,graph_type,t,kth_fold,l_norm,maxkappa,losstype);

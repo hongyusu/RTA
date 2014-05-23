@@ -13,11 +13,11 @@ logging.basicConfig(format='%(asctime)s %(filename)s %(funcName)s %(levelname)s:
 
 def singleRSTA(filename,graph_type,t,node,kth_fold,l_norm,kappa):
   try:
-    with open("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAr.log" % (filename,graph_type,t,kth_fold,l_norm,kappa)): pass
+    with open("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa)): pass
     logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
   except:
     logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
-    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAr' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
+    os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
     logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
     time.sleep(5)
   pass
@@ -27,7 +27,7 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run=0
+  is_main_run=3
 
   #filenames=['emotions','yeast','scene','enron','cal500','fp','cancer','medical','toy10','toy50','toy100'] 
   filenames=['toy10','emotions','yeast','medical','scene','enron','toy50','ArD10','ArD15','ArD20','ArD30']#,'fp','cancer','cal500']
@@ -44,7 +44,7 @@ def run():
               t=1
             para_t="%d" % (t)
             try:
-              with open("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAr.log" % (filename,graph_type,para_t,kth_fold,l_norm,kappa)): pass
+              with open("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAs.log" % (filename,graph_type,para_t,kth_fold,l_norm,kappa)): pass
               continue
             except:
               node=cluster[n%len(cluster)]
