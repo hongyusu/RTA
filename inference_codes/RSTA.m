@@ -30,6 +30,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global profile;
     global obj;
     global delta_obj_list;
+    global obj_list;
     global opt_round;
     global Rmu_list;
     global Smu_list;
@@ -41,6 +42,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global PAR;     % parallel compuing on matlab with matlabpool
     global kappa_decrease_flags;  
     global iter;
+    global duality_gap_on_trees;
     
     global val_list;
     global kappa_list;
@@ -78,6 +80,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Ye_list = cell(T_size, 1);
     ind_edge_val_list = cell(T_size, 1);
     Kxx_mu_x_list = cell(T_size, 1);
+    duality_gap_on_trees = ones(1,T_size)*1e10;
     
     
     norm_const_linear = 1/(T_size)/size(E_list{1},1);
@@ -117,6 +120,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     kappa_list = zeros(1,m);
     GmaxG0_list = zeros(1,m);
     GoodUpdate_list = zeros(1,m);
+    obj_list = zeros(1,T_size);
+    
     
     %% initialization
     
@@ -139,7 +144,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     %% Iteration over examples untile convergece ?
     % parameters
-    obj_list = zeros(1,T_size);
+    
+    
     prev_obj = 0;
     
     nflip=Inf;
@@ -160,7 +166,8 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Yipos_list = ones(1,m);
     
     %% Iterate over training examples until convergence 
-    while(opt_round < params.maxiter)
+    while(opt_round < params.maxiter && ...
+            primal_ub - obj >= params.epsilon*obj)
 %     while (primal_ub - obj >= params.epsilon*obj && ... % satisfy duality gap
 %             progress_made == 1 && ...                   % make progress
 %             nflip > 0 && ...                            % number of flips
@@ -182,16 +189,18 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         
         %% iterate over examples 
         iter = iter +1;   
-        kappa_decrease_flags = zeros(1,m);
+        kappa_decrease_flags = ones(1,m);
         %Yipos_list = ones(1,m);
         val_list = zeros(1,m);
 
-        if mode(iter,3) <= 30
-            Yipos_list = ones(1,m);
+        if iter <= 1
+            selected_samples = 1:m;
+        else
+            selected_samples = randsample(1:m,m,true,Yipos_list/sum(Yipos_list));
         end
-        for xi = randsample(1:m,m,true,Yipos_list/sum(Yipos_list))
-        %for xi = randsample(1:m,m)
-        %for xi = 1:m
+        for xi = selected_samples
+%         for xi = randsample(1:m,m)
+%         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)
             if PAR
                 [delta_obj_list,kappa_decrease_flags(xi)] = par_conditional_gradient_descent(xi,kappa);    % optimize on single example
@@ -365,6 +374,8 @@ end
 %
 function compute_duality_gap
     %% parameter
+    global obj_list;
+    global duality_gap_on_trees;
     global T_size;
     global Kx_tr;
     global loss_list;
@@ -494,13 +505,20 @@ function compute_duality_gap
     %% Compute primal upper bound, which is obj+duality gap
     % TODO: one of the calculates can be further optimized, as there is no
     % need to compute both obj and dgap.
-    %obj + sum(dgap)
-    if obj + sum(dgap) <  primal_ub
-        % always use smaller value for primal upper bound
-        primal_ub=obj + sum(dgap);
+%     if obj + sum(dgap) <  primal_ub
+%         % always use smaller value for primal upper bound
+%         primal_ub=obj + sum(dgap);
+%     end
+    dgap = max(0,dgap);
+    %duality_gap_on_trees = min(dgap,duality_gap_on_trees);
+    duality_gap_on_trees = dgap;
+    
+    
+    if primal_ub > obj + sum(dgap)
+        primal_ub = obj + sum(dgap);
     end
     %primal_ub = obj + sum(dgap);
-
+    
     %%
     return;
 end
@@ -913,13 +931,14 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
         Y_kappa_val(t,:) = YmaxVal;
     end
     
-    %% Update direction. Worst violating multilabels is defined as the first column, the number of trees define the number of multilabel used in convex direction finding.
+    %% Compute update direction. Worst violating multilabels is defined as the first column, the number of trees define the number of multilabel used in convex direction finding.
     mu_0_T = cell(T_size,1);
     for t=1:T_size
         E=E_list{t};
         mu_0s = zeros(4*size(E,1),T_size);
         for i=1:T_size
             Ymax = Y_kappa(i,1:l);
+            Ymax = Y_kappa(1,((i-1)*l+1):(i*l));
             Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
             mu_0 = zeros(size(mu));
             for u = 1:4
@@ -930,6 +949,8 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
         mu_0_T{t}=mu_0s;
     end
     
+
+    kappa_decrease_flag = 1;
     
     %% Generalized line search to get lambda.
     % direction mu_0_T{t}:4|E|*n_direction
@@ -945,25 +966,41 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
         % Compute quadratic term
         Ye = Ye_list{t}(:,x);
         E = E_list{t};
+        Kmu_x = Kmu_x_list_local{t};
+        mu_0s = mu_0_T{t};
         % Compute Kmu_x
         Kmu_0 = zeros(4*size(E,1),n_direction);
-        smu_1_te = sum(reshape(mu_0.*Ye,4,size(E,1)),1);
-        smu_1_te = reshape(smu_1_te(ones(4,1),:),length(mu),1);
-        kxx_mu_0{t} = ~Ye*params.C+mu_0-smu_1_te;
-        Ye
+        kxx_mu_0{t} = zeros(size(mu_0s,1),n_direction);
         for i=1:n_direction
-            Kmu_0(:,i) = Kmu_x + kxx_mu_0{t} - Kxx_mu_x_list{t}(:,x);
+            mu_0 = mu_0s(:,i);
+            smu_1_te = sum(reshape(mu_0.*Ye,4,size(E,1)),1);
+            smu_1_te = reshape(smu_1_te(ones(4,1),:),length(mu),1);
+            kxx_mu_0{t}(:,i) = ~Ye*params.C+mu_0-smu_1_te;
+%             Kmu_x
+%             kxx_mu_0{t}(:,i)
+%             Kxx_mu_x_list{t}(:,x)
+            Kmu_0(:,i) = Kmu_x + kxx_mu_0{t}(:,i) - Kxx_mu_x_list{t}(:,x);
         end
-        quadratic_term = quadratic_term + 0.5*norm_const_quadratic_list(t)*Kmu_0'*mu_0_T{t};
+        Kmu_0'
+        mu_0_T{t}
+        quadratic_term = quadratic_term + 0.5*norm_const_quadratic_list(t)*Kmu_0'*mu_0_T{t}
     end
     % Perform quadratic programming to solve for lambda.
+    opts = optimoptions('quadprog',...
+        'Diagnostics','off',...
+        'Algorithm','active-set',...
+        'Display','final');
+    quadratic_term*2
     lambda = quadprog(quadratic_term*2,linear_term,...
         [],[],...
         ones(1,n_direction),1,... % equality constraint: sum of lambda is 1
-        zeros(1,n_direction),ones(1,n_direction)... % inequality constraint: 0<=lambda<<1
-        ); 
+        zeros(1,n_direction),ones(1,n_direction),... % inequality constraint: 0<=lambda<<1
+        [],opts); 
+    lambda
     
-    
+    if x==2
+        sdafasd
+    end
     %% Compute Gmax and G0.
     for t=1:T_size
         mu = mu_list{t}(:,x);
@@ -973,18 +1010,24 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
         G0(t) = -mu'*gradient;
     end
     
-    mu_t'
-    Gmax
-    G0
+    
+    
+    GmaxG0_list(x) = sum(Gmax>=G0);
+    GoodUpdate_list(x) = 1;
+    
     
     
     %% Decide whether to update.
+    for t=1:T_size
+        delta_obj_list(t) = 0;
+    end
     if sum(Gmax) >= sum(G0)
         for t=1:T_size
             % update mu
             mu = reshape(lambda'*mu_0_T{t}',4*size(E,1),1);
+            delta_obj_list(t) = 0;% gradient'*mu_d*tau - norm_const_quadratic_list(t)*tau^2/2*mu_d'*Kmu_d;
             % update Kxx_mu_x_list
-            Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
+            Kxx_mu_x_list{t}(:,x) = lambda'*kxx_mu_0{t}';
             % update Smu Rmu
             mu = reshape(mu,4,size(E,1));
             for u = 1:4
@@ -998,117 +1041,7 @@ function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent_con
     end
     
     
-    
-    
-    %% Otherwise we need line serach to find optimal step size to the saddle point.
-    % reviewed on 16/05/2014
-    mu_d_list = mu_list;
-    nomi=zeros(1,T_size);
-    denomi=zeros(1,T_size);
-    kxx_mu_0 = cell(1,T_size);
-    Gmax = zeros(1,T_size);
-    G0 = zeros(1,T_size);
-    Kmu_d_list = cell(1,T_size);
-    for t=1:T_size
-        %% Obtain variables located for tree t and example x.
-        loss = loss_list{t}(:,x);
-        Ye = Ye_list{t}(:,x);
-        ind_edge_val = ind_edge_val_list{t};
-        mu = mu_list{t}(:,x);
-        E = E_list{t};
-        Rmu = Rmu_list{t};
-        Smu = Smu_list{t};
-        
-        %% compute Gmax and G0
-        Kmu_x = Kmu_x_list_local{t};
-        gradient = gradient_list_local{t};
-        % Compute Gmax, which is the best objective value along gradient.
-        Gmax(t) = compute_Gmax(gradient,Ymax,E);
-        Gmax(t) = Gmax(t)*params.C;
-        % Compute G0, which is current objective value. 
-        G0(t) = -mu'*gradient;
-        %G0(t) = norm_const_linear*loss'*mu - 1/2*norm_const_quadratic_list(t)*Kmu_x'*mu;
-        
-        %% Compte mu_0, which is the best margin violator into update direction.
-        Umax_e = 1+2*(Ymax(:,E(:,1))>0) + (Ymax(:,E(:,2)) >0);
-        mu_0 = zeros(size(mu));
-        for u = 1:4
-            mu_0(4*(1:size(E,1))-4 + u) = params.C*(Umax_e == u);
-        end
-        
-        %% compute Kmu_0
-        if sum(mu_0) > 0
-            smu_1_te = sum(reshape(mu_0.*Ye,4,size(E,1)),1);
-            smu_1_te = reshape(smu_1_te(ones(4,1),:),length(mu),1);
-            kxx_mu_0{t} = ~Ye*params.C+mu_0-smu_1_te;
-        else
-            kxx_mu_0{t} = zeros(size(mu));
-        end
-        
-        Kmu_0 = Kmu_x + kxx_mu_0{t} - Kxx_mu_x_list{t}(:,x);
 
-        mu_d = mu_0 - mu;
-        Kmu_d = Kmu_0-Kmu_x;
-              
-        Kmu_d_list{t} = Kmu_d;
-        mu_d_list{t} = mu_d;
-        nomi(t) = mu_d'*gradient;
-        denomi(t) = norm_const_quadratic_list(t) * Kmu_d' * mu_d;
-        
-            
-        if x==0
-            %reshape(mu_d,4,size(E,1))
-            [nomi(t),denomi(t)]
-            [nomi(t)/denomi(t)]
-            if iter == 10
-                asdfad
-            end
-        end
-
-    end
-    mu_0'
-    Gmax
-    G0
-    
-    %% Decide whether to update or not.
-    if sum(Gmax)>=sum(G0)
-        tau = min(sum(nomi)/sum(denomi),1);
-    else
-        tau=0;
-    end
-    % Step size should not be negative.
-    tau = max(tau,0);
-
-	GmaxG0_list(x) = sum(Gmax>=G0);
-    GoodUpdate_list(x) = (tau>0);
-    
-    
-    %% update for each tree
-    delta_obj_list = zeros(1,T_size);
-    for t=1:T_size
-        % variables located for tree t and example x
-        loss = loss_list{t}(:,x);
-        Ye = Ye_list{t}(:,x);
-        ind_edge_val = ind_edge_val_list{t};
-        mu = mu_list{t}(:,x);
-        E = E_list{t};
-        gradient =  gradient_list_local{t};
-        mu_d = mu_d_list{t};
-        Kmu_d = Kmu_d_list{t};
-        %
-        delta_obj_list(t) = gradient'*mu_d*tau - norm_const_quadratic_list(t)*tau^2/2*mu_d'*Kmu_d;
-        mu = mu + tau*mu_d;
-        Kxx_mu_x_list{t}(:,x) = (1-tau)*Kxx_mu_x_list{t}(:,x) + tau*kxx_mu_0{t};
-        % update Smu Rmu
-        mu = reshape(mu,4,size(E,1));
-        for u = 1:4
-            Smu_list{t}{u}(:,x) = (sum(mu)').*ind_edge_val{u}(:,x);
-            Rmu_list{t}{u}(:,x) = mu(u,:)';
-        end
-        
-        mu = reshape(mu,4*size(E,1),1);
-        mu_list{t}(:,x) = mu;
-    end
     
     %%
     return;
@@ -1378,6 +1311,8 @@ function profile_update_tr
     global GmaxG0_list;
     global GoodUpdate_list;
     global T_size;
+    global duality_gap_on_trees;
+    global obj_list;
 
 
     tm = cputime;
@@ -1401,8 +1336,10 @@ function profile_update_tr
         profile.n_err = sum(profile.microlabel_errors > 0);
         profile.p_err = profile.n_err/length(profile.microlabel_errors);
         %[val_list;Yipos_list;kappa_decrease_flags]
+        %duality_gap_on_trees./(obj_list+duality_gap_on_trees)
+        %Yipos_list
         print_message(...
-            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d Y*pos: %3.2f%% %.2f %.2f %d Yipos: %3.2f%% %.2f %.2f %.2f K: %.2f %.2f %d Mg: %.2f%% %.3f %.3f obj: %.2f gap: %.2f%% Update %.2f%% %.2f%%',...
+            sprintf('tm: %d iter: %d 1_er_tr: %d (%3.2f) er_tr: %d (%3.2f) K: %d Y*pos: %3.2f%% %.2f %.2f %d Yipos: %3.2f%% %.2f %.2f %.2f K: %.2f %.2f %d Mg: %.2f%% %.3f %.3f obj: %.2f gap: %.2f%% Update %.2f%% %.2f%% gap: %.2f%%',...
             round(tm-profile.start_time),...
             opt_round,...
             profile.n_err,...
@@ -1422,12 +1359,13 @@ function profile_update_tr
             std(kappa_list),...
             max(kappa_list),...
             sum((val_list>0))/size(Y_tr,1)*100,...
-            mean(val_list),...
-            std(val_list),...
+            mean(val_list)*100,...
+            std(val_list)*100,...
             obj,...
-            (primal_ub-obj)/obj*100,...
+            mean(duality_gap_on_trees./(obj_list+duality_gap_on_trees))*100,... %(primal_ub-obj)/primal_ub*100,...
             mean(GmaxG0_list)/T_size*100,...
-            sum(GoodUpdate_list)/size(Y_tr,1)*100),...
+            sum(GoodUpdate_list)/size(Y_tr,1)*100,...
+            (primal_ub-obj)/(primal_ub)*100),...
             0,sprintf('/var/tmp/%s.log',params.filestem));
     end
 end

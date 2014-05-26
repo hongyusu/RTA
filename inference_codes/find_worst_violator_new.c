@@ -31,7 +31,7 @@
  *      3. break_flag:
  *          if the best multilabel is found evidentally, meaning the score of the multilabel is higher than the threshold
  *      4. Yi_pos:
- *          median position of best multilabel
+ *          best position of best multilabel
  *
  * Note:
  *      1. No memeory lead, last check on 26/03/2014
@@ -198,7 +198,8 @@ void mexFunction ( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         }
     }
     qsort(Yi_positions, Y_kappa_val_nrow, sizeof(double), sortcompare);
-    Yi_pos = Yi_positions[Y_kappa_val_nrow/2]; 
+    //Yi_pos = Yi_positions[Y_kappa_val_nrow/2]; 
+    Yi_pos = Yi_positions[0];  
     //printm(Yi_positions,1,Y_kappa_val_nrow);
     //printf("%.2f\n",Yi_pos);
     free(Yi_positions);
