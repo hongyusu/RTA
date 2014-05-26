@@ -193,12 +193,11 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %Yipos_list = ones(1,m);
         val_list = zeros(1,m);
 
-        if iter <= 1
-            selected_samples = 1:m;
-        else
-            selected_samples = randsample(1:m,m,true,Yipos_list/sum(Yipos_list));
+        if iter <= 30
+            Yipos_list = ones(1,m);
         end
-        for xi = selected_samples
+        for xi = randsample(1:m,m,true,Yipos_list/sum(Yipos_list))
+%        for xi = selected_samples
 %         for xi = randsample(1:m,m)
 %         for xi = 1:m
             print_message(sprintf('Start descend on example %d initial k %d',xi,kappa),3)

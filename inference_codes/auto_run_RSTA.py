@@ -74,7 +74,7 @@ def run():
   n=0
   is_main_run_factor=2
 
-  filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500']#,'fp']
+  filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
   n=0
   # generate jobs
   for kth_fold in ['1','2','3']:#,'4','5']:
