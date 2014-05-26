@@ -1,5 +1,10 @@
 
 
+# wrapper function to run the RSTA leaning algorithm on cluster parallel for parameters and datasets
+# use python thread package
+# implement worker class which will automaticlly takes the very first job from the queue 
+# if job is not finished well, the worker will put back the job into the job queue
+
 
 import math
 import re
@@ -14,6 +19,7 @@ from get_free_nodes import get_free_nodes
 import multiprocessing
 import time
 import logging
+import random
 logging.basicConfig(format='%(asctime)s %(filename)s %(funcName)s %(levelname)s:%(message)s', level=logging.INFO)
 
 
@@ -28,16 +34,16 @@ class Worker(Thread):
     self.job_queue  = job_queue
     self.node = node
     pass # def
- def run(self):
+  def run(self):
     all_done = 0
     while not all_done:
       try:
         job = self.job_queue.get(0)
         time.sleep(random.randint(5000,6000) / 1000.0)  # sleep random time
-        single_thread(self.node, job)
+        singleRSTA(self.node, job)
       except Queue.Empty:
         all_done = 1
-      pass
+      pass # while
     pass # def
   pass # class
 
@@ -49,13 +55,12 @@ def singleRSTA(node, job):
       logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
     else:
       logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
-      print(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
+      os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
       logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
-      time.sleep(5)
   except:
     job_queue.put((job))
     logging.info('\t--X (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
-    time.sleep(5)
+  time.sleep(10)
   pass # def
 
 
@@ -64,12 +69,12 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run_factor=0.1
+  is_main_run_factor=2
 
   filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500']#,'fp']
   n=0
   # generate jobs
-  for kth_fold in ['1']:#,'2']:#,'3','4','5']:
+  for kth_fold in ['1','2','3']:#,'4','5']:
     for filename in filenames:
       graph_type = 'tree'
       for kappa in ['2','8','16','20']:
@@ -84,14 +89,19 @@ def run():
             except:
               n=n+1
               job_queue.put((n,filename,graph_type,para_t,kth_fold,l_norm,kappa))
-            pass
-          pass
-      pass
-    pass
+            pass # for |T|
+          pass # for l
+        pass # for kappa
+      pass # for datasets
+    pass # for k fole
   # running jobs
   job_size = job_queue.qsize()
-  for i in len(cluster):
-    t = Worker(job_queue, cluster[t])
+  logging.info( "\t\tprocessing %d jobs" % (job_size))
+  threads = []
+  for i in range(len(cluster)):
+    if job_queue.empty():
+      break
+    t = Worker(job_queue, cluster[i])
     time.sleep(is_main_run_factor)
     try:
       t.start()
