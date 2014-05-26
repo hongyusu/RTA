@@ -64,7 +64,7 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run_factor=5
+  is_main_run_factor=0.1
 
   filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500']#,'fp']
   n=0
@@ -92,7 +92,7 @@ def run():
   job_size = job_queue.qsize()
   for i in len(cluster):
     t = Worker(job_queue, cluster[t])
-    time.sleep(1)
+    time.sleep(is_main_run_factor)
     try:
       t.start()
       threads.append(t)
