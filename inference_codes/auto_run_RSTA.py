@@ -60,6 +60,9 @@ def singleRSTA(node, job):
   except:
     job_queue.put((job))
     logging.info('\t--X (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
+  if not os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa)):
+    job_queue.put((job))
+    logging.info('\t--x (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
   time.sleep(10)
   pass # def
 
