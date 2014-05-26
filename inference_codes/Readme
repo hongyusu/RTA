@@ -13,3 +13,8 @@ To compile the code, please make sure you have gcc compiler that supports OMP. T
 	mex find_worst_violator_new.c
 Run an example:
 	run_RSTA('ArD15','tree','5','1','1','2','2')
+
+auto_run_RSTA.py
+	python script which runs random spanning tree approximation algorithm parallelly on cluster, the script uses python multiple thread package and implement a 'worker' class.
+	The worker class maintains a job queue and automatically gets the first job from the queue.
+	THe worker class can also put back job that is not well done back to the queue.
