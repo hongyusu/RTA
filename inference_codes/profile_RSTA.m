@@ -136,6 +136,7 @@ function profile_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     
     %% Select part of the data for code sanity check if 'isTest==1'.
     ntrain = 500;
+    ntrain = min(ntrain,size(Y,1));
     %if isTest==1
         X=X(1:ntrain,:);
         Y=Y(1:ntrain,:);
