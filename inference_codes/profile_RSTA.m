@@ -135,7 +135,7 @@ function profile_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     Ind = getCVIndex(Y,nfold);
     
     %% Select part of the data for code sanity check if 'isTest==1'.
-    ntrain = 200;
+    ntrain = 500;
     ntrain = min(ntrain,size(Y,1));
     %if isTest==1
         X=X(1:ntrain,:);
@@ -167,7 +167,7 @@ function profile_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     mmcrf_maxkappa = maxkappa;
     
     % display parameters
-    fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
+    fprintf('\tC:%d G:%.2f Iteration:%d examples:%d\n', mmcrf_c,mmcrf_g,mmcrf_i,size(Y,1));
     
     %% Generate random graph.
     rand('twister', 0);    
