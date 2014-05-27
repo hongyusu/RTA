@@ -14,7 +14,13 @@ To compile the code, please make sure you have gcc compiler that supports OMP. T
 Run an example:
 	run_RSTA('ArD15','tree','5','1','1','2','2')
 
+
 auto_run_RSTA.py
-	python script which runs random spanning tree approximation algorithm parallelly on cluster, the script uses python multiple thread package and implement a 'worker' class.
-	The worker class maintains a job queue and automatically gets the first job from the queue.
-	THe worker class can also put back job that is not well done back to the queue.
+auto_profile_RSTA.py
+	The python scripts will run/profile Random Spanning Tree Approximation algorithm parallel on interactive cluster.
+	The parallelism is for the purpose of multiple parameters and datasets.
+	The scripts use the help of Python thread and queue package.
+	The framework looks at each combination of parameters as a job and pools all jobs into a job queue.
+	A group of workers (computing nodes) are then activated, each will take and process from the queue the first job.
+	If the job is not completed by the worker, the worker will push the job back to the queue and will be processed later on.
+	
