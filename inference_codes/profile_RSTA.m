@@ -1,10 +1,40 @@
 
 %%
-% running MMCRF on one dataset with random tree / random pair graph as
-% output graph structure connecting multiple output labels
-function profile_RSTA(filename,graph_type,t,isTest)
+%
+% COMPILE WITH:
+%   mex compute_topk_omp.c forward_alg_omp.c backward_alg_omp.c  CFLAGS="\$CFLAGS -fopenmp" LDFLAGS="\$LDFLAGS -fopenmp" CC="/usr/local/bin/gcc -std=c99"
+%   mex find_worst_violator_new.c
+%
+%
+% PARAMETERS:
+%   filename: prefix of the input file
+%   graph_type: spanning tree or random pair graph
+%   t: number of trees
+%   isTest: TRUE to select small portion of data for testing purpose
+%   kth_fold: kth fold of five fold CV
+%   l_norm: '1'->l1 norm regularization, '2'->l2 norm regularization
+%   maxkappa: the length of K best list
+%
+%
+% EXAMPLE:
+%   run_RSTA('ArD15','tree','5','1','1','2','2')
+%   this will run the algorithm
+%   on ArD15 dataset, with random spanning tree as output structure,
+%   generating 5 random spanning tree, selecting small portion of data for
+%   testing, running first fold of five fold CV, with l2 norm
+%   regularization, bulding K best list with K=2
+%
+%
 
-    %% tackle input parameters
+
+%% profile scripts 
+% selected examples: 500
+% C: 0.1
+% iteration: 50
+
+function profile_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
+
+    %% Process input parameters
     if nargin <1
         disp('Not enough input parameters!')
         return;
@@ -18,34 +48,56 @@ function profile_RSTA(filename,graph_type,t,isTest)
     if nargin < 4
         isTest = '0';
     end
-    % set random number seed
+    if nargin < 5
+        kth_fold = '1';
+    end
+    if nargin < 6
+        l_norm = '2'
+    end
+    if nargin < 7
+        maxkappa = '2';
+    end
+    
+    % Set seed of random number
     rand('twister', 0);
-    % suffix for write result files
-    suffix=sprintf('%s_%s_%s_RSTA', filename,graph_type,t);
+    
+    %losstype = 'r'; % 1 loss
+    losstype = 's'; % scaled loss
+    
+    % Set suffix of the result files
+    suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_pfRSTA%s', filename,graph_type,t,kth_fold,l_norm,maxkappa,losstype);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
-    %
+    
+    % Convert parameters from string to numerical
     t=eval(t);
     isTest = eval(isTest);
-    % get search path
+    kth_fold = eval(kth_fold);
+    l_norm = eval(l_norm);
+    maxkappa = eval(maxkappa);
+    
+    % Add search path
     addpath('../shared_scripts/');  
-    % get current hostname
+    
+    % Get current hostname to be able to run on cluster
     [~,comres]=system('hostname');
-    if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
-        X=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_features',filename));
-        Y=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_targets',filename));
+    
+    % Read in X and Y matrix
+    if strcmp(comres(1:4),'melk') || strcmp(comres(1:4),'ukko') || strcmp(comres(1:4),'node')
+        X=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_features',filename));
+        Y=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_targets',filename));
     else
         X=dlmread(sprintf('../shared_scripts/test_data/%s_features',filename));
         Y=dlmread(sprintf('../shared_scripts/test_data/%s_targets',filename));
     end
-
-
-    %% data preprocessing
-    % select example with features that make sense
+    
+    %% Process input data X and Y matrix
+    % select examples which have non-zero features 
     Xsum=sum(X,2);
     X=X(Xsum~=0,:);
     Y=Y(Xsum~=0,:);
-    % label selection with two classes
+    % Select labels which is not constant over examples.
+    % Note that after label selection the performance might drop because the easy-to-predict labels are removed.
     Yuniq=zeros(1,size(Y,2));
     for i=1:size(Y,2)
         if size(unique(Y(:,i)),1)>1
@@ -53,30 +105,23 @@ function profile_RSTA(filename,graph_type,t,isTest)
         end
     end
     Y=Y(:,Yuniq(Yuniq~=0));
-
-
-    %% feature normalization (tf-idf for text data, scale and centralization for other numerical features)
+    
+    %Y=Y(:,1:6);
+    
+    % Feature normalization (tf-idf for text data, scale and centralization for other numerical features).
     if or(strcmp(filename,'medical'),strcmp(filename,'enron')) 
         X=tfidf(X);
     elseif ~(strcmp(filename(1:2),'to'))
         X=(X-repmat(min(X),size(X,1),1))./repmat(max(X)-min(X),size(X,1),1);
     end
 
-    %% change Y from -1 to 0: labeling (0/1)
+    % Change Y from -1 to 0: labeling (0/1).
     Y(Y==-1)=0;
 
-    % stratified cross validation index
-    nfold = 5;
-    % n-fold index
-    %Ind = repmat([1:nfold],1,10000);
-    %Ind = Ind(1:size(Y,1));
-    Ind = getCVIndex(Y,nfold);
-
-
-    %% get dot product kernels from normalized features or just read precomputed kernels
+    % Get dot product kernels from normalized features or just read precomputed kernels.
     if or(strcmp(filename,'fpuni'),strcmp(filename,'cancer'))
         if strcmp(comres(1:4),'dave') | strcmp(comres(1:4),'ukko') | strcmp(comres(1:4),'node')
-            K=dlmread(sprintf('/home/group/urenzyme/workspace/data/%s_kernel',filename));
+            K=dlmread(sprintf('/cs/taatto/group/urenzyme/workspace/data/%s_kernel',filename));
         else
             K=dlmread(sprintf('../shared_scripts/test_data/%s_kernel',filename));
         end
@@ -85,39 +130,48 @@ function profile_RSTA(filename,graph_type,t,isTest)
         K = K ./ sqrt(diag(K)*diag(K)');    %normalization diagonal is 1
     end
 
-    %% select part of the data for code sanity check
-    if isTest==1
-        X=X(1:100,:);
-        Y=Y(1:100,:);
-        K=K(1:100,1:100);
-        Ind=Ind(1:100);
-    end
+    %% Stratified n fold cross validation index.
+    nfold = 5;
+    Ind = getCVIndex(Y,nfold);
+    
+    %% Select part of the data for code sanity check if 'isTest==1'.
+    ntrain = 500;
+    %if isTest==1
+        X=X(1:ntrain,:);
+        Y=Y(1:ntrain,:);
+        K=K(1:ntrain,1:ntrain);
+        Ind=Ind(1:ntrain);
+    %end
 
-
-
-    %% parameter selection
+    %% Perform parameter selection.
+    % TODO: to be better implemented
     % ues results from parameter selection, otherwise use fixed parameters
-    try
-        load(sprintf('../outputs/%s_%s_baselearner_parameters.mat',filename,graph_type));
-        mmcrf_c=selected_parameters(1);
-        mmcrf_g=selected_parameters(2);
-        mmcrf_i=selected_parameters(3);
-    catch err
-        disp(err)
-        mmcrf_c = 1;
-        mmcrf_g = 0.01;
-        mmcrf_i = 100;
+    para_n=11;
+    parameters=zeros(para_n,10);
+    for i=1:para_n
+        try
+            load(sprintf('../parameters/%s_%s_1_f%d_l2_i%d_RSTAp.mat',filename,graph_type,kth_fold,i));
+            parameters(i,:) = perf;
+        catch err
+            parameters(i,:) = [i,10,zeros(1,8)];
+        end
     end
-    % display something
+    parameters=sortrows(parameters,[3,2]);
+    mmcrf_c = parameters(para_n,2);
+    
+    % currently use following parameters
+    mmcrf_c = 1;
+    mmcrf_g = -1e10;%0.01;
+    mmcrf_i = 50;
+    mmcrf_maxkappa = maxkappa;
+    
+    % display parameters
     fprintf('\tC:%d G:%.2f Iteration:%d\n', mmcrf_c,mmcrf_g,mmcrf_i);
     
-    %% generate random graph
-    rand('twister', 0);
-    % generate random graph (guess 200 base learner should be enough)
-    
+    %% Generate random graph.
+    rand('twister', 0);    
     
     Nrep=t;
-    
     
     Nnode=size(Y,2);
     Elist=cell(Nrep,1);
@@ -131,24 +185,37 @@ function profile_RSTA(filename,graph_type,t,isTest)
         E=[E,min(E')',max(E')'];E=E(:,3:4); % arrange head and tail
         E=sortrows(E,[1,2]); % sort by head and tail
         Elist{i}=RootTree(E); % put into cell array
+      
+% construct similar spanning tree        
+%         if i~=1
+%             Elist{i}=Elist{1};
+%             pos = randsample(2:(size(Elist{1},1)),1);
+%             Elist{i}(pos,1) = randsample(unique(Elist{1}(1:(pos-1),:)),1);
+%             Elist{i}=RootTree(Elist{i});
+%         end
+        
+        
     end
-    % pick up one random graph
+    
+    
+    % Pick up one random graph.
     E=Elist{t};
-    % running
-    perfRand=[];
-    perfValEns=[];
-    perfBinEns=[];
-    Ypred=Y;
-    YpredVal=Y;
+    
+    %% Variable to keep results.
+    Ypred=zeros(size(Y));
+    YpredVal=zeros(size(Y));
     running_times=zeros(nfold,1);
     muList=cell(nfold,1);
 
     %% nfold cross validation of base learner
-    for k=1:nfold
+    for k=kth_fold
+        paramsIn.profileiter    = 1;
+        paramsIn.losstype       = losstype; % losstype
         paramsIn.mlloss         = 0;        % assign loss to microlabels(0) edges(1)
         paramsIn.profiling      = 1;        % profile (test during learning)
         paramsIn.epsilon        = mmcrf_g;        % stopping criterion: minimum relative duality gap
         paramsIn.C              = mmcrf_c;        % margin slack
+        paramsIn.maxkappa       = mmcrf_maxkappa;
         paramsIn.max_CGD_iter   = 1;		% maximum number of conditional gradient iterations per example
         paramsIn.max_LBP_iter   = 3;        % number of Loopy belief propagation iterations
         paramsIn.tolerance      = 1E-10;    % numbers smaller than this are treated as zero
@@ -156,10 +223,11 @@ function profile_RSTA(filename,graph_type,t,isTest)
         paramsIn.maxiter        = mmcrf_i;        % maximum number of iterations in the outer loop
         paramsIn.verbosity      = 1;
         paramsIn.debugging      = 3;
+        paramsIn.l_norm         = l_norm;
         if isTest
             paramsIn.extra_iter     = 0;        % extra iteration through examples when optimization is over
         else
-            paramsIn.extra_iter     = 1;        % extra iteration through examples when optimization is over
+            paramsIn.extra_iter     = 0;        % extra iteration through examples when optimization is over
         end
         paramsIn.filestem       = sprintf('%s',suffix);		% file name stem used for writing output
 
@@ -187,15 +255,18 @@ function profile_RSTA(filename,graph_type,t,isTest)
         Ypred(Itest,:)=Ypred_ts;
         %YpredVal(Itest,:)=Ypred_ts_val;
         running_times(k,1) = running_time;
-        break;
     end
 
-    system(sprintf('cp /var/tmp/%s.log ../outputs/%s.log', suffix));
     
-    %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
+    % auc & roc random model
+    [acc,vecacc,pre,rec,f1,auc1,auc2]=get_performance(Y(Itest,:),(Ypred(Itest,:)==1),YpredVal(Itest));
+    perf = [acc,vecacc,pre,rec,f1,auc1,auc2,norm_const_quadratic_list]
     
-
+    %% Close matlab process if it's not test run, otherwise keep matlab process alive
     if ~isTest
+        %% need to save: Ypred, YpredVal, running_time, mu for current baselearner t,filename
+        save(sprintf('../outputs/%s.mat', paramsIn.filestem), 'perf','Ypred', 'YpredVal', 'running_times', 'muList','norm_const_quadratic_list');
+        system(sprintf('mv /var/tmp/%s.log ../outputs/', suffix));    
         exit
     end
 end
