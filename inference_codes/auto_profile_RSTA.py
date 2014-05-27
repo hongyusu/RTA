@@ -1,9 +1,13 @@
 
 
-# wrapper function to run the RSTA leaning algorithm on cluster parallel for parameters and datasets
-# use python thread package
-# implement worker class which will automaticlly takes the very first job from the queue 
-# if job is not finished well, the worker will put back the job into the job queue
+
+# Wrapper function to profile developed Random Spanning Tree Approximation algorithm parallelly on interactive cluster,for the purpose of multiple parameter and datasets.
+# The script uses Python thread and queue package.
+# Implement worker class and queuing system.
+# The framework looks at each parameter combination as a job and pools all jobs in a queue.
+# It generates a group of workers (computing nodes). 
+# Each worker will always take and process the first job from the queue.
+# In case that job is not completed by the worker, it will be push back to the queue, and will be processed later on.
 
 
 import math
