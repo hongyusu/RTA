@@ -81,7 +81,7 @@ def run():
   filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
   n=0
   # generate jobs
-  for kth_fold in ['1','2','3']:#,'4','5']:
+  for kth_fold in ['1','2','3','4','5']:
     for filename in filenames:
       graph_type = 'tree'
       for kappa in ['2','8','16','20']:

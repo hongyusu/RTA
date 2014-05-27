@@ -425,12 +425,19 @@ void mexFunction ( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         for(int jj=0; jj<Y_kappa_val_ncol; jj++)
         {
             if(Y_kappa_ind[ii+jj*Y_kappa_val_nrow] == Y_kappa_ind[cur_row+cur_col*Y_kappa_val_nrow])
-            {Y_positions[ii] = jj+1;}
+            {
+                Y_positions[ii] = jj+1;
+                break;
+            }
         }
     }
-    qsort(Y_positions, Y_kappa_val_nrow, sizeof(double), sortcompare);
-    //*(mxGetPr(OUT_break_flag)) = Y_positions[Y_kappa_val_nrow/2]; // average position
-    *(mxGetPr(OUT_break_flag)) = Y_positions[0]; // minimum position
+    *(mxGetPr(OUT_break_flag)) = Y_kappa_val_ncol+1; // minimum position
+    if(find == 1)
+    {
+        qsort(Y_positions, Y_kappa_val_nrow, sizeof(double), sortcompare);
+        //*(mxGetPr(OUT_break_flag)) = Y_positions[Y_kappa_val_nrow/2]; // average position
+        *(mxGetPr(OUT_break_flag)) = Y_positions[0]; // minimum position
+    }
     free(Y_positions);
     free(Y_kappa_ind);
     

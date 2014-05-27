@@ -135,7 +135,7 @@ function profile_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     Ind = getCVIndex(Y,nfold);
     
     %% Select part of the data for code sanity check if 'isTest==1'.
-    ntrain = 500;
+    ntrain = 200;
     ntrain = min(ntrain,size(Y,1));
     %if isTest==1
         X=X(1:ntrain,:);
@@ -247,7 +247,7 @@ function profile_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
         dataIn.Y_tr = gY_tr;        % label
         dataIn.Y_ts = gY_ts;
         % running
-        [rtn,~] = RSTA(paramsIn,dataIn);
+        [rtn,~] = RSTAprofile(paramsIn,dataIn);
         % save margin dual mu
         muList{k}=rtn;
         % collecting results
