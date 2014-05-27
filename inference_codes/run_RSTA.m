@@ -203,6 +203,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
 
     %% nfold cross validation of base learner
     for k=kth_fold
+        paramsIn.profileiter    = 40;
         paramsIn.losstype       = losstype; % losstype
         paramsIn.mlloss         = 0;        % assign loss to microlabels(0) edges(1)
         paramsIn.profiling      = 1;        % profile (test during learning)

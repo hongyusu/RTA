@@ -230,7 +230,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
         %Yipos_list
         %obj_list
         
-        if mod(iter, 40)==0
+        if mod(iter, params.profileiter)==0
             progress_made = (obj >= prev_obj);  
             prev_obj = obj;
             if PAR
