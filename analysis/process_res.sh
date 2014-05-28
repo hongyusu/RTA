@@ -1,5 +1,7 @@
 
 
+# process
+
 #for name in 'cal500' 'toy10' 'emotions' 'scene' 'toy50' 'enron' 'medical' 'yeast' 'ArD10' 'ArD15' 'ArD20' 'ArD30' 'cancer'
 for name in 'cal500' 'toy10' 'emotions' 'scene' 'enron' 'yeast' 'ArD10' 'ArD15' 'ArD20' 'ArD30' 'medical' 'toy50'
 do
