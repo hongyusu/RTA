@@ -81,6 +81,7 @@ def run():
   filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
   n=0
   # generate jobs
+  logging.info('\t\tGenerating job queue.')
   for kth_fold in ['1','2','3','4','5']:
     for filename in filenames:
       graph_type = 'tree'
@@ -105,7 +106,7 @@ def run():
     pass # for k fole
   # running jobs
   job_size = job_queue.qsize()
-  logging.info( "\t\tprocessing %d jobs" % (job_size))
+  logging.info( "\t\tProcessing %d jobs" % (job_size))
   threads = []
   for i in range(len(cluster)):
     if job_queue.empty():
