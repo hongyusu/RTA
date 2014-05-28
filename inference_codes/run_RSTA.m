@@ -17,16 +17,17 @@
 %
 %
 % EXAMPLE:
-%   run_RSTA('ArD15','tree','5','1','1','2','2')
+%   run_RSTA('ArD15','tree','5','1','1','2','2','100')
 %   this will run the algorithm
 %   on ArD15 dataset, with random spanning tree as output structure,
 %   generating 5 random spanning tree, selecting small portion of data for
 %   testing, running first fold of five fold CV, with l2 norm
 %   regularization, bulding K best list with K=2
+%   margin slack parameter equals to 100
 %
 %
 
-function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
+function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa,slack_c)
 
     %% Process input parameters
     if nargin <1
@@ -59,7 +60,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     losstype = 's'; % scaled loss
     
     % Set suffix of the result files
-    suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_RSTA%s', filename,graph_type,t,kth_fold,l_norm,maxkappa,losstype);
+    suffix=sprintf('%s_%s_%s_f%s_l%s_k%s_c%s_RSTA%s', filename,graph_type,t,kth_fold,l_norm,maxkappa,slack_c,losstype);
     system(sprintf('rm /var/tmp/%s.log', suffix));
     system(sprintf('rm /var/tmp/Ypred_%s.mat', suffix));
     
@@ -69,6 +70,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     kth_fold = eval(kth_fold);
     l_norm = eval(l_norm);
     maxkappa = eval(maxkappa);
+    slack_c = eval(slack_c);
     
     % Add search path
     addpath('../shared_scripts/');  
@@ -154,7 +156,7 @@ function run_RSTA(filename,graph_type,t,isTest,kth_fold,l_norm,maxkappa)
     mmcrf_c = parameters(para_n,2);
     
     % currently use following parameters
-    mmcrf_c = 100.000;
+    mmcrf_c = slack_c;
     mmcrf_g = -1e10;%0.01;
     mmcrf_i = 120;
     mmcrf_maxkappa = maxkappa;

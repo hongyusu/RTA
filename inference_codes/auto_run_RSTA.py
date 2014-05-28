@@ -53,20 +53,20 @@ class Worker(Thread):
 
 
 def singleRSTA(node, job):
-  (n,filename,graph_type,t,kth_fold,l_norm,kappa) = job
+  (n,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c) = job
   try:
-    if os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa)):
-      logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
+    if os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)):
+      logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
     else:
-      logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
-      os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' " > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,filename,graph_type,t,kth_fold,l_norm,kappa) )
-      logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
+      logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
+      os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' '%s'" > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c) )
+      logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
   except:
     job_queue.put((job))
-    logging.info('\t--X (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
-  if not os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa)):
+    logging.info('\t--X (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
+  if not os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)):
     job_queue.put((job))
-    logging.info('\t--x (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa))
+    logging.info('\t--x (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
   time.sleep(10)
   pass # def
 
@@ -90,12 +90,14 @@ def run():
             if t==0:
               t=1
             para_t="%d" % (t)
-            try:
-              with open("../outputs/%s_%s_%s_f%s_l%s_k%s_RSTAs.log" % (filename,graph_type,para_t,kth_fold,l_norm,kappa)): pass
-              continue
-            except:
-              n=n+1
-              job_queue.put((n,filename,graph_type,para_t,kth_fold,l_norm,kappa))
+            for slack_c in ['100','50','10','1','0.1']:
+              try:
+                with open("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)): pass
+                continue
+              except:
+                n=n+1
+                job_queue.put((n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c))
+              pass # for slack_c
             pass # for |T|
           pass # for l
         pass # for kappa
@@ -122,7 +124,7 @@ def run():
   pass # def
 
 
-
+# It's actually not necessary to have '__name__' space, but whatever ...
 if __name__ == "__main__":
   run()
   pass
