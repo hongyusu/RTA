@@ -90,7 +90,7 @@ def run():
             if t==0:
               t=1
             para_t="%d" % (t)
-            for slack_c in ['100','50','10','1','0.1']:
+            for slack_c in ['100','1','0.1','10','0.01','50','0.5']:
               try:
                 with open("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)): pass
                 continue
