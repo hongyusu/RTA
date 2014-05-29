@@ -76,7 +76,7 @@ def run():
   #cluster = ['dave']
   jobs=[]
   n=0
-  is_main_run_factor=2
+  is_main_run_factor=5
 
   filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
   n=0
