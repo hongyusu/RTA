@@ -84,9 +84,10 @@ def run():
   for kth_fold in ['1']:#,'2','3','4','5']:
     for filename in filenames:
       graph_type = 'tree'
-      for kappa in ['2','4','8','16','20','32']:
+      for kappa in [40,50,60]:#['2','4','8','16','20','32']:
         for l_norm in ['2']:
-          for t in [5]:#range(0,41,10):
+          #for t in [5]:#range(0,41,10):
+          for t in [1,5] + range(10,41,10):
             if t==0:
               t=1
             para_t="%d" % (t)
