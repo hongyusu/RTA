@@ -12,6 +12,9 @@
  * Compile into MATLAB function with:
  *      part of compute_topk_omp.c
  *
+ *
+ * Note:
+ *  1. memory check on 31.05.2014 to correct the problem of not free start and stop position
  */
 
 
@@ -188,6 +191,8 @@ double * backward_alg_omp ( double * P_node, double * T_node, int K, double * E,
             free(Y);
         }
     }
+    free(stop_pos);
+    free(start_pos);
 
     /* END OF PARALLEL REGION */
     //node_degree[(int)(E[0]-1)] = node_degree[(int)(E[0]-1)] - 1; 

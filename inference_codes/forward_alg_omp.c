@@ -14,6 +14,9 @@
  * Compile into MATLAB function with:
  *      part of compute_topk_omp.c
  *
+ * Note:
+ *  1. memory lead check on 31.05.2014
+ *
  */
 
 
@@ -208,8 +211,8 @@ double * forward_alg_omp ( double * gradient, int K, double * E, int l, double *
     }
     //printm(P_node,16,4);
     //printm(T_node,16,4);
-    free(P_node);
     free(T_node);
+    free(P_node);
     return(results);
 }
 
