@@ -58,18 +58,16 @@ class Worker(Thread):
 
 
 def checkfile(filename,graph_type,t,kth_fold,l_norm,kappa,slack_c):
-  print "../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)
   file_exist = 0
   file_exist += os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
   file_exist += os.path.isfile("../outputs/phase6/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
   file_exist += os.path.isfile("../outputs/phase7/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
   file_exist += os.path.isfile("../outputs/phase8/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
   file_exist += os.path.isfile("../outputs/phase9/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
-  print file_exist
   if file_exist > 0:
-    return 0
-  else:
     return 1
+  else:
+    return 0
   pass
 
 
@@ -115,12 +113,11 @@ def run():
               if t==0:
                 t=1
               para_t="%d" % (t)
-              print filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c,checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c),
               if checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c):
-                print '1',checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)
+                print '-|',n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c
                 continue
               else:
-                print '0',checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)
+                print '->',n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c
                 n=n+1
                 job_queue.put((n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c))
               pass # for slack_c
