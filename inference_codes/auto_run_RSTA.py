@@ -52,7 +52,6 @@ class Worker(Thread):
           self.penalty = 0
       except Queue.Empty:
         all_done = 1
-      print self.node, self.penalty
       pass # while
     pass # def
   pass # class
@@ -80,7 +79,7 @@ def singleRSTA(node, job):
       fail_penalty = 0
     else:
       logging.info('\t--> (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
-      print(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' '%s'" > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c) )
+      os.system(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' '%s'" > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c) )
       logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
       fail_penalty = -1
   except Exception as excpt_msg:
@@ -105,7 +104,7 @@ def run():
   n=0
   # generate jobs
   logging.info('\t\tGenerating job queue.')
-  for slack_c in ['100','1','0.1','10','0.01','50','0.5']:
+  for slack_c in ['100','1','0.1','10','0.01','50','0.5','20','0.05','5']:
     for kth_fold in ['1','2','3','4','5']:
       for filename in filenames:
         graph_type = 'tree'
