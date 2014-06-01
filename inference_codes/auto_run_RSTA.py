@@ -82,7 +82,8 @@ def singleRSTA(node, job):
       print(""" ssh -o StrictHostKeyChecking=no %s 'cd /cs/taatto/group/urenzyme/workspace/colt2014/experiments/random_spanning_tree_approximation/inference_codes/; rm -rf /var/tmp/.matlab; export OMP_NUM_THREADS=32; nohup matlab -nodisplay -r "run_RSTA '%s' '%s' '%s' '0' '%s' '%s' '%s' '%s'" > /var/tmp/tmp_%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs' """ % (node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c) )
       logging.info('\t--| (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
       fail_penalty = -1
-  except:
+  except Exception as excpt_msg:
+    print excpt_msg
     job_queue.put((job))
     logging.info('\t--= (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
     fail_penalty = 1
