@@ -95,12 +95,9 @@ def singleRSTA(node, job):
 
 
 def run():
-  cluster = get_free_nodes()[0]
-  #cluster = ['dave']
   jobs=[]
   n=0
   is_main_run_factor=5
-
   filenames=['cancer']#,'ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
   n=0
   # generate jobs
@@ -117,8 +114,10 @@ def run():
               para_t="%d" % (t)
               print filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c,checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)
               if checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c):
+                print '1',checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)
                 continue
               else:
+                print '0',checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)
                 n=n+1
                 job_queue.put((n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c))
               pass # for slack_c
@@ -129,7 +128,9 @@ def run():
     pass # for k fole
   # running jobs
   job_size = job_queue.qsize()
-  logging.info( "\t\tProcessing %d jobs" % (job_size))
+  logging.info( "\t\tProcessing %d jobs" % (job_size+1))
+  cluster = get_free_nodes()[0]
+  #cluster = ['dave']
   threads = []
   for i in range(len(cluster)):
     if job_queue.empty():
