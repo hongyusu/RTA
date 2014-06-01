@@ -58,6 +58,7 @@ class Worker(Thread):
 
 
 def checkfile(filename,graph_type,t,kth_fold,l_norm,kappa,slack_c):
+  print "../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)
   file_exist = 0
   file_exist += os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
   file_exist += os.path.isfile("../outputs/phase5/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
@@ -128,7 +129,7 @@ def run():
     pass # for k fole
   # running jobs
   job_size = job_queue.qsize()
-  logging.info( "\t\tProcessing %d jobs" % (job_size+1))
+  logging.info( "\t\tProcessing %d jobs" % (job_size))
   cluster = get_free_nodes()[0]
   #cluster = ['dave']
   threads = []
