@@ -51,6 +51,8 @@ function [rtn, ts_err] = RSTAprofile(paramsIn, dataIn)
     global GoodUpdate_list;
     global Ypred_rank_statistics;
     
+    global kappa_test;
+    
     rand('twister', 0);
     
     
@@ -104,6 +106,11 @@ function [rtn, ts_err] = RSTAprofile(paramsIn, dataIn)
     
     kappa_decrease_flags = zeros(1,m);
     kappa=kappa_INIT;
+    kappa_test = kappa;
+    if kappa > 60
+        kappa = 60;
+    end
+    
     
     
     for t=1:T_size
@@ -1244,6 +1251,11 @@ function profile_update
     global primal_ub;
     global norm_const_quadratic_list;
     global Ypred_rank_statistics;
+    
+    global kappa;
+    global kappa_test;
+    kappa=kappa_test;
+    
     m = size(Ye,2);
     tm = cputime;
     print_message(sprintf('tm: %d  iter: %d obj: %f mu: max %f min %f dgap: %f',...
