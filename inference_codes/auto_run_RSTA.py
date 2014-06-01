@@ -52,6 +52,7 @@ class Worker(Thread):
           self.penalty = 0
       except Queue.Empty:
         all_done = 1
+      print self.node, self.penalty
       pass # while
     pass # def
   pass # class
@@ -127,6 +128,7 @@ def run():
     pass # for k fole
   # get computing nodes
   cluster = get_free_nodes()[0]
+  cluster = ['node003.hpc','node131.hpc','node128.hpc']
   # running jobs
   job_size = job_queue.qsize()
   logging.info( "\t\tProcessing %d jobs" % (job_size))
