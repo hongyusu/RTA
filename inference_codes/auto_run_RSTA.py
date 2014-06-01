@@ -127,7 +127,6 @@ def run():
     pass # for k fole
   # get computing nodes
   cluster = get_free_nodes()[0]
-  cluster = ['node003.hpc','node131.hpc','node128.hpc']
   # running jobs
   job_size = job_queue.qsize()
   logging.info( "\t\tProcessing %d jobs" % (job_size))
