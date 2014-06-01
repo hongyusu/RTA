@@ -130,6 +130,7 @@ def run():
   # running jobs
   job_size = job_queue.qsize()
   logging.info( "\t\tProcessing %d jobs" % (job_size))
+  return
   cluster = get_free_nodes()[0]
   #cluster = ['dave']
   threads = []
