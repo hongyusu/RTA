@@ -99,11 +99,11 @@ def run():
   jobs=[]
   n=0
   is_main_run_factor=5
-  filenames=['cancer']#,'ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
+  filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
   n=0
   # generate jobs
   logging.info('\t\tGenerating job queue.')
-  for slack_c in ['100']:#,'1','0.1','10','0.01','50','0.5']:
+  for slack_c in ['100','1','0.1','10','0.01','50','0.5']:
     for kth_fold in ['1','2','3','4','5']:
       for filename in filenames:
         graph_type = 'tree'
