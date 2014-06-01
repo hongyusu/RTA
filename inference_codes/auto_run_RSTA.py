@@ -83,7 +83,7 @@ def singleRSTA(node, job):
       fail_penalty = -1
   except:
     job_queue.put((job))
-    logging.info('\t--X (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
+    logging.info('\t--= (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
     fail_penalty = 1
   if not os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)):
     job_queue.put((job))
@@ -102,7 +102,7 @@ def run():
   n=0
   # generate jobs
   logging.info('\t\tGenerating job queue.')
-  for slack_c in ['100']#,'1','0.1','10','0.01','50','0.5']:
+  for slack_c in ['100']:#,'1','0.1','10','0.01','50','0.5']:
     for kth_fold in ['1','2','3','4','5']:
       for filename in filenames:
         graph_type = 'tree'
