@@ -114,10 +114,8 @@ def run():
                 t=1
               para_t="%d" % (t)
               if checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c):
-                print '-|',n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c
                 continue
               else:
-                print '->',n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c
                 n=n+1
                 job_queue.put((n,filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c))
               pass # for slack_c
@@ -126,12 +124,11 @@ def run():
         pass # for kappa
       pass # for datasets
     pass # for k fole
+  # get computing nodes
+  cluster = get_free_nodes()[0]
   # running jobs
   job_size = job_queue.qsize()
   logging.info( "\t\tProcessing %d jobs" % (job_size))
-  return
-  cluster = get_free_nodes()[0]
-  #cluster = ['dave']
   threads = []
   for i in range(len(cluster)):
     if job_queue.empty():
