@@ -74,7 +74,7 @@ def checkfile(filename,graph_type,t,kth_fold,l_norm,kappa,slack_c):
 def singleRSTA(node, job):
   (n,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c) = job
   try:
-    if checifile(filename,graph_type,t,kth_fold,l_norm,kappa,slack_c):
+    if checkfile(filename,graph_type,t,kth_fold,l_norm,kappa,slack_c):
       logging.info('\t--< (node)%s,(f)%s,(type)%s,(t)%s,(f)%s,(l)%s,(k)%s,(c)%s' %( node,filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
       fail_penalty = 0
     else:
