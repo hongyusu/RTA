@@ -115,7 +115,7 @@ def run():
               if t==0:
                 t=1
               para_t="%d" % (t)
-              print filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c,checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)::
+              print filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c,checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c):
               if checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c):
                 continue
               else:
