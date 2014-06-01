@@ -102,7 +102,7 @@ def run():
   n=0
   # generate jobs
   logging.info('\t\tGenerating job queue.')
-  for slack_c in ['100','1','0.1','10','0.01','50','0.5']:
+  for slack_c in ['100']#,'1','0.1','10','0.01','50','0.5']:
     for kth_fold in ['1','2','3','4','5']:
       for filename in filenames:
         graph_type = 'tree'
@@ -112,7 +112,7 @@ def run():
               if t==0:
                 t=1
               para_t="%d" % (t)
-              print filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c,checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)
+              print filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c,checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c),
               if checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c):
                 print '1',checkfile(filename,graph_type,para_t,kth_fold,l_norm,kappa,slack_c)
                 continue
