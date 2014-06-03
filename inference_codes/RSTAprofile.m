@@ -97,19 +97,26 @@ function [rtn, ts_err] = RSTAprofile(paramsIn, dataIn)
         kappa_INIT  =2;
         kappa_MIN   =2;
         kappa_MAX   =2;
+        kappa_test = 2;
+        kappa  = 2;
     else
         kappa_INIT  = min(params.maxkappa,2^l);
         kappa_MIN   = min(params.maxkappa,2^l); 
         kappa_MAX   = min(params.maxkappa,2^l);
+        
+        kappa=kappa_INIT;
+        kappa_test = kappa;
+        if kappa > 60
+            kappa = 60;
+            kappa_INIT  = 60;
+            kappa_MIN   = 60;
+            kappa_MAX   = 60;
+        end
     end
     
     
     kappa_decrease_flags = zeros(1,m);
-    kappa=kappa_INIT;
-    kappa_test = kappa;
-    if kappa > 60
-        kappa = 60;
-    end
+    
     
     
     
