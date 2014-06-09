@@ -18,8 +18,8 @@
 	run_RSTA('ArD15','tree','5','1','1','2','2')
 
 # There are two PYTHON scripts:
-# auto_run_RSTA.py
-# auto_profile_RSTA.py
+#   auto_run_RSTA.py
+#   auto_profile_RSTA.py
 # The python scripts will run/profile Random Spanning Tree Approximation algorithm parallel on interactive cluster.
 # The parallelism is for the purpose of multiple parameters and datasets.
 # The scripts use the help of PYTHON 'thread' and 'queue' package.
