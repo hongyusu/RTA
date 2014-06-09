@@ -60,10 +60,16 @@ class Worker(Thread):
 def checkfile(filename,graph_type,t,kth_fold,l_norm,kappa,slack_c):
   file_exist = 0
   file_exist += os.path.isfile("../outputs/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
-  file_exist += os.path.isfile("../outputs/phase6/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
-  file_exist += os.path.isfile("../outputs/phase7/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
-  file_exist += os.path.isfile("../outputs/phase8/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
-  file_exist += os.path.isfile("../outputs/phase9/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c))
+  file_exist += os.path.isfile("../outputs/phase6/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 100
+  file_exist += os.path.isfile("../outputs/phase7/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 1
+  file_exist += os.path.isfile("../outputs/phase8/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 0.1
+  file_exist += os.path.isfile("../outputs/phase9/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 10
+  #file_exist += os.path.isfile("../outputs/phase10/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 0.01
+  #file_exist += os.path.isfile("../outputs/phase11/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 50
+  #file_exist += os.path.isfile("../outputs/phase12/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 0.5
+  #file_exist += os.path.isfile("../outputs/phase13/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 20
+  #file_exist += os.path.isfile("../outputs/phase14/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 0.05
+  #file_exist += os.path.isfile("../outputs/phase15/%s_%s_%s_f%s_l%s_k%s_c%s_RSTAs.log" % (filename,graph_type,t,kth_fold,l_norm,kappa,slack_c)) # 5
   if file_exist > 0:
     return 1
   else:
