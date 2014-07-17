@@ -107,6 +107,7 @@ def run():
   n=0
   is_main_run_factor=5
   filenames=['cancer','ArD20','ArD30','toy10','toy50','emotions','yeast','medical','scene','enron','cal500','fp']
+  #filenames=['scene']
   n=0
   # generate jobs
   logging.info('\t\tGenerating job queue.')
