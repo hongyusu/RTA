@@ -17,7 +17,7 @@
 %
 %
 % EXAMPLE:
-%   run_RSTA('ArD15','tree','5','1','1','2','2','100')
+%   run_RSTA('ArD10','tree','5','1','1','2','2','100')
 %   this will run the algorithm
 %   on ArD15 dataset, with random spanning tree as output structure,
 %   generating 5 random spanning tree, selecting small portion of data for
