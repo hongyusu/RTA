@@ -1,15 +1,10 @@
 
 
-
 %% 
 %
-% Random spanning tree approximations assumes a model build with complete
-% graph as output graph structure. As learning/inference on complete graph
-% is difficult, the algorithm construct a set of predictors with random
-% spanning tree as output graph. Under margin assumption, if the there is a
-% classifier achieve a margin on a complete graph, there will be a
-% combination of random tree predictors achieving a similar margin.
-% 
+% Random spanning tree approximations assumes a model built with a complete graph as output graph. As learning/inference on a complete graph is
+% known to be difficult, the algorithm construct a set of predictors each with a random spanning tree as the output graph. With max-margin assumption,
+% if there exists a classifier achieving a margin on a complete graph, there will be a collection of random tree predictors achieving a similar margin.
 %
 %
 function [rtn, ts_err] = RSTA(paramsIn, dataIn)
@@ -618,6 +613,7 @@ end
 %   x:      the id of current training example
 %   obj:    current objective
 %   kappa:  current kappa
+%
 function [delta_obj_list,kappa_decrease_flag] = conditional_gradient_descent(x, kappa)
     %% Parameter definition
     global loss_list;
