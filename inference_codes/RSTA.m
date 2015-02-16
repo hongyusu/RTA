@@ -5,22 +5,33 @@
 % Random spanning tree approximations assumes a model built with a complete graph as output graph. As learning/inference on a complete graph is
 % known to be difficult, the algorithm construct a set of predictors each with a random spanning tree as the output graph. With max-margin assumption,
 % if there exists a classifier achieving a margin on a complete graph, there will be a collection of random tree predictors achieving a similar margin.
+% 
+% PARAMETERS:
+%   paramsIn:   input parameters
+%   dataIn:     input data e.g., kernel and label matrices for training and testing
+%   rtn:        return value
+%   ts_err:     test error
+%
+%
+% USAGE:
+%   This function is called by run_RSTA()
 %
 %
 function [rtn, ts_err] = RSTA(paramsIn, dataIn)
+
     %% Definition of global variables
-    global loss_list;   % losses associated with different edge labelings
-    global mu_list;     % marginal dual varibles: these are the parameters to be learned
-    global E_list;      % edges of the Markov network e_i = [E(i,1),E(i,2)];
+    global loss_list;           % losses associated with different edge labelings
+    global mu_list;             % marginal dual varibles: these are the parameters to be learned
+    global E_list;              % edges of the Markov network e_i = [E(i,1),E(i,2)];
     global ind_edge_val_list;	% ind_edge_val{u} = [Ye == u] 
     global Ye_list;             % Denotes the edge-labelings 1 <-- [-1,-1], 2 <-- [-1,+1], 3 <-- [+1,-1], 4 <-- [+1,+1]
-    global Kx_tr;   % X-kernel, assume to be positive semidefinite and normalized (Kx_tr(i,i) = 1)
+    global Kx_tr;               % X-kernel, assume to be positive semidefinite and normalized (Kx_tr(i,i) = 1)
     global Kx_ts;
-    global Y_tr;    % Y-data: assumed to be class labels encoded {-1,+1}
+    global Y_tr;                % Y-data: assumed to be class labels encoded {-1,+1}
     global Y_ts;
-    global params;  % parameters use by the learning algorithm
-    global m;       % number of training instances
-    global l;       % number of labels
+    global params;              % parameters use by the learning algorithm
+    global m;                   % number of training instances
+    global l;                   % number of labels
     global primal_ub;
     global profile;
     global obj;
@@ -29,16 +40,15 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     global opt_round;
     global Rmu_list;
     global Smu_list;
-    global T_size;  % number of trees
+    global T_size;              % number of trees
     global norm_const_linear;
     global norm_const_quadratic_list;
     global Kxx_mu_x_list;
-    global kappa;   % K best
-    global PAR;     % parallel compuing on matlab with matlabpool
+    global kappa;               % K best
+    global PAR;                 % parallel compuing on matlab with matlabpool
     global kappa_decrease_flags;  
-    global iter;
+    global iter;                % the indicator for the number of iteration
     global duality_gap_on_trees;
-    
     global val_list;
     global kappa_list;
     global Yipos_list;
@@ -49,9 +59,9 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     
     if T_size >= 20
-        PAR=0;
+        PAR = 0;
     else
-        PAR =0;
+        PAR = 0;
     end
     
     global previous;
@@ -63,31 +73,29 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     else
         l1norm = 0;
     end
-    Kx_tr=dataIn.Kx_tr;
-    Kx_ts=dataIn.Kx_ts;
-    Y_tr=dataIn.Y_tr;
-    Y_ts=dataIn.Y_ts;
-    E_list=dataIn.Elist;
-    l = size(Y_tr,2);
-    m = size(Kx_tr,1);
-    T_size = size(E_list,1);
-    loss_list = cell(T_size, 1);
-    Ye_list = cell(T_size, 1);
-    ind_edge_val_list = cell(T_size, 1);
-    Kxx_mu_x_list = cell(T_size, 1);
-    duality_gap_on_trees = ones(1,T_size)*1e10;
-    
-    
-    norm_const_linear = 1/(T_size)/size(E_list{1},1);
-    norm_const_quadratic_list = zeros(1,T_size)+1/(T_size);
+    Kx_tr       = dataIn.Kx_tr;
+    Kx_ts       = dataIn.Kx_ts;
+    Y_tr        = dataIn.Y_tr;
+    Y_ts        = dataIn.Y_ts;
+    E_list      = dataIn.Elist;
+    l           = size(Y_tr,2);
+    m           = size(Kx_tr,1);
+    T_size      = size(E_list,1);
+    loss_list   = cell(T_size, 1);
+    Ye_list     = cell(T_size, 1);
+    ind_edge_val_list           = cell(T_size, 1);
+    Kxx_mu_x_list               = cell(T_size, 1);
+    duality_gap_on_trees        = ones(1,T_size)*1e10;
+    norm_const_linear           = 1/(T_size)/size(E_list{1},1);
+    norm_const_quadratic_list   = zeros(1,T_size)+1/(T_size);
     
     mu_list = cell(T_size);
-    
+     
     
     if T_size <= 1
-        kappa_INIT  =2;
-        kappa_MIN   =2;
-        kappa_MAX   =2;
+        kappa_INIT  = 2;
+        kappa_MIN   = 2;
+        kappa_MAX   = 2;
     else
         kappa_INIT  = min(params.maxkappa,2^l);
         kappa_MIN   = min(params.maxkappa,2^l); 
@@ -96,7 +104,7 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     
     
     kappa_decrease_flags = zeros(1,m);
-    kappa=kappa_INIT;
+    kappa = kappa_INIT;
     
     
     for t=1:T_size
