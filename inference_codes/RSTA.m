@@ -76,19 +76,19 @@ function [rtn, ts_err] = RSTA(paramsIn, dataIn)
     Kx_tr       = dataIn.Kx_tr;
     Kx_ts       = dataIn.Kx_ts;
     Y_tr        = dataIn.Y_tr;
-    Y_ts        = dataIn.Y_ts;
-    E_list      = dataIn.Elist;
-    l           = size(Y_tr,2);
-    m           = size(Kx_tr,1);
-    T_size      = size(E_list,1);
-    loss_list   = cell(T_size, 1);
-    Ye_list     = cell(T_size, 1);
+    Y_ts        = dataIn.Y_ts;      
+    E_list      = dataIn.Elist;     % a list of random spanning trees in terms of edges
+    l           = size(Y_tr,2);     % the number of microlabels
+    m           = size(Kx_tr,1);    % the number of examples
+    T_size      = size(E_list,1);   % the number of random spanning trees
+    loss_list   = cell(T_size, 1);  % a list of losses on the collection of trees
+    Ye_list     = cell(T_size, 1);   
     ind_edge_val_list           = cell(T_size, 1);
     Kxx_mu_x_list               = cell(T_size, 1);
-    duality_gap_on_trees        = ones(1,T_size)*1e10;
-    norm_const_linear           = 1/(T_size)/size(E_list{1},1);
-    norm_const_quadratic_list   = zeros(1,T_size)+1/(T_size);
-    
+    duality_gap_on_trees        = ones(1,T_size)*1e10;          % relative duality gap on individual spanning tree
+    norm_const_linear           = 1/(T_size)/size(E_list{1},1); % The linear term will be normalized by the total number of edges
+    norm_const_quadratic_list   = zeros(1,T_size)+1/(T_size);   % The quadratic term is normalized by 1
+
     mu_list = cell(T_size);
      
     
